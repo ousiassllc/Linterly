@@ -33,7 +33,7 @@ func TestTextReporter_Output(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	reporter := NewReporter("text", tr, &buf)
+	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := newTestReport()
 	require.NoError(t, reporter.Report(report, nil))
@@ -55,7 +55,7 @@ func TestTextReporter_Japanese(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	reporter := NewReporter("text", tr, &buf)
+	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := newTestReport()
 	require.NoError(t, reporter.Report(report, nil))
@@ -72,7 +72,7 @@ func TestTextReporter_WithWarnings(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	reporter := NewReporter("text", tr, &buf)
+	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := newTestReport()
 	warnings := []string{"Both .linterlyignore and ignore in config file are defined."}
@@ -89,7 +89,7 @@ func TestTextReporter_NoViolations(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	reporter := NewReporter("text", tr, &buf)
+	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := &analyzer.AnalysisReport{
 		Results: []analyzer.Result{
@@ -105,7 +105,7 @@ func TestTextReporter_NoViolations(t *testing.T) {
 
 func TestJSONReporter_Output(t *testing.T) {
 	var buf bytes.Buffer
-	reporter := NewReporter("json", nil, &buf)
+	reporter := NewReporter(FormatJSON, nil, &buf)
 
 	report := newTestReport()
 	require.NoError(t, reporter.Report(report, nil))
@@ -128,7 +128,7 @@ func TestJSONReporter_Output(t *testing.T) {
 
 func TestJSONReporter_ValidJSON(t *testing.T) {
 	var buf bytes.Buffer
-	reporter := NewReporter("json", nil, &buf)
+	reporter := NewReporter(FormatJSON, nil, &buf)
 
 	report := newTestReport()
 	require.NoError(t, reporter.Report(report, nil))
@@ -140,14 +140,14 @@ func TestJSONReporter_ValidJSON(t *testing.T) {
 func TestNewReporter_Text(t *testing.T) {
 	tr, _ := i18n.New("en")
 	var buf bytes.Buffer
-	r := NewReporter("text", tr, &buf)
+	r := NewReporter(FormatText, tr, &buf)
 	_, ok := r.(*TextReporter)
 	assert.True(t, ok)
 }
 
 func TestNewReporter_JSON(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewReporter("json", nil, &buf)
+	r := NewReporter(FormatJSON, nil, &buf)
 	_, ok := r.(*JSONReporter)
 	assert.True(t, ok)
 }

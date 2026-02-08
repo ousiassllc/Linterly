@@ -42,7 +42,7 @@ func Analyze(counts []counter.LineCount, scanResult *scanner.ScanResult, cfg *co
 	maxFile := cfg.Rules.MaxLinesPerFile
 	maxDir := cfg.Rules.MaxLinesPerDirectory
 	thresholdPct := cfg.Rules.WarningThreshold
-	codeOnly := cfg.CountMode == "code_only"
+	codeOnly := cfg.CountMode == config.CountModeCodeOnly
 
 	fileThreshold := calcThreshold(maxFile, thresholdPct)
 	dirThreshold := calcThreshold(maxDir, thresholdPct)

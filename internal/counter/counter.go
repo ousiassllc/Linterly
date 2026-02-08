@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/ousiassllc/linterly/internal/config"
 )
 
 // LineCount はファイルの行数カウント結果。
@@ -24,7 +26,7 @@ func CountFile(path string, mode string) (*LineCount, error) {
 
 	result := &LineCount{Path: path}
 
-	if mode == "code_only" {
+	if mode == config.CountModeCodeOnly {
 		lang := DetectLanguage(path)
 		total, code, err := countCodeOnly(f, lang)
 		if err != nil {

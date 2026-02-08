@@ -31,7 +31,7 @@ var checkCmd = &cobra.Command{
 
 func init() {
 	checkCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file (default is .linterly.yml)")
-	checkCmd.Flags().StringVarP(&format, "format", "f", "text", "output format (text or json)")
+	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text or json)")
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {

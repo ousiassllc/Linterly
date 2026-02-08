@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ousiassllc/linterly/internal/reporter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -99,7 +100,7 @@ default_excludes: false
 	helperWriteFile(t, bigFile, strings.Repeat("line\n", 4))
 
 	configFile = cfgPath
-	format = "text"
+	format = reporter.FormatText
 
 	err := runCheck(checkCmd, []string{targetDir})
 	require.Error(t, err)
@@ -135,7 +136,7 @@ default_excludes: false
 	helperWriteFile(t, smallFile, "line1\nline2\n")
 
 	configFile = cfgPath
-	format = "text"
+	format = reporter.FormatText
 
 	err := runCheck(checkCmd, []string{targetDir})
 	assert.NoError(t, err)
@@ -168,7 +169,7 @@ default_excludes: false
 	helperWriteFile(t, warnFile, strings.Repeat("line\n", 4))
 
 	configFile = cfgPath
-	format = "text"
+	format = reporter.FormatText
 
 	err := runCheck(checkCmd, []string{targetDir})
 	assert.NoError(t, err)
