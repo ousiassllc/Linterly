@@ -1,0 +1,4 @@
+rules:
+  max_lines_per_file: 200
+  max_lines_per_directory: 1500
+  warning_threshold: 5
