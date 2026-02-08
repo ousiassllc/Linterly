@@ -1,0 +1,3 @@
+golangci-lint run
+go test ./...
+go build -o /dev/null ./cmd/linterly
