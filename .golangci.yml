@@ -1,0 +1,12 @@
+run:
+  exclude-dirs:
+    - testdata
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign

@@ -24,8 +24,8 @@ test-v: ## テストを詳細表示で実行
 cover: ## カバレッジレポートを表示
 	go test ./... -cover
 
-lint: ## go vet を実行
-	go vet ./...
+lint: ## golangci-lint を実行
+	golangci-lint run
 
 fmt: ## コードをフォーマット
 	gofmt -w .
