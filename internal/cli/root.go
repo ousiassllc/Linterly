@@ -4,8 +4,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// langFlag は --lang フラグの値を保持する。
 var langFlag string
 
+// rootCmd はルートコマンド。SilenceErrors/SilenceUsage により main.go でエラー出力を一元管理する。
 var rootCmd = &cobra.Command{
 	Use:           "linterly",
 	Short:         "Linterly - A code line count linter",

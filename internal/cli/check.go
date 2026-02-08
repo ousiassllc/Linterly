@@ -17,8 +17,10 @@ import (
 )
 
 var (
+	// configFile は --config フラグの値を保持する。
 	configFile string
-	format     string
+	// format は --format フラグの値を保持する。
+	format string
 )
 
 var checkCmd = &cobra.Command{
