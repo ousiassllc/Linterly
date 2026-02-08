@@ -1,0 +1,15 @@
+pre-commit:
+  commands:
+    lint:
+      run: golangci-lint run
+    test:
+      run: go test ./...
+
+pre-push:
+  commands:
+    lint:
+      run: golangci-lint run
+    test:
+      run: go test ./...
+    build:
+      run: go build -o /dev/null ./cmd/linterly
