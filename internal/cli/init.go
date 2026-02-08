@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ousiassllc/linterly/internal/config"
-	"github.com/ousiassllc/linterly/internal/i18n"
 )
 
 var initCmd = &cobra.Command{
@@ -23,10 +22,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	const filename = ".linterly.yml"
 
 	// config 読み込み前に言語を解決して Translator を初期化
-	lang := i18n.ResolveLanguage(langFlag)
-	translator, err := i18n.New(lang)
+	translator, _, err := initTranslator()
 	if err != nil {
-		return NewRuntimeError("failed to initialize i18n: %v", err)
+		return err
 	}
 
 	// ファイルが既に存在するか確認
