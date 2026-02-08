@@ -89,7 +89,7 @@ $ linterly check
   ERROR src/service.go (450 lines, limit: 300)
   ERROR src/ (2500 lines, limit: 2000)
 
-Results: 1 error, 1 warning, 42 passed
+Results: 2 error(s), 1 warning, 42 passed
 ```
 
 日本語設定時：
@@ -101,7 +101,7 @@ $ linterly check
   ERROR src/service.go (450 行, 上限: 300)
   ERROR src/ (2500 行, 上限: 2000)
 
-結果: 1 エラー, 1 警告, 42 パス
+結果: 2 エラー, 1 警告, 42 パス
 ```
 
 #### JSON 出力例
@@ -219,3 +219,4 @@ linterly v1.0.0 (go1.22.0, linux/amd64)
 | 版 | 日付 | 変更内容 | 変更理由 |
 |---|------|---------|---------|
 | 1.0 | 2026-02-08 | 初版作成 | — |
+| 1.1 | 2026-02-08 | テキスト出力例のエラー件数を 2 に修正 | JSON 出力例・出力例の ERROR 件数との整合性確保 |

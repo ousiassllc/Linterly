@@ -14,6 +14,7 @@ graph TD
 
     CLI --> Config
     CLI --> Scanner
+    CLI --> Counter
     CLI --> Analyzer
     CLI --> Reporter
     Config --> I18n
@@ -39,6 +40,7 @@ graph TD
 | `root.go` | ルートコマンド定義。引数なしでヘルプを表示 |
 | `check.go` | check サブコマンド。チェックフローの実行を統括 |
 | `init.go` | init サブコマンド。設定ファイルの生成 |
+| `version.go` | バージョン情報表示 |
 
 #### 主要インターフェース
 
@@ -59,7 +61,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 
 **責務**: 設定ファイル・ignore ファイルの読み込み、バリデーション、デフォルト値の管理。
 
-**依存**: i18n
+**依存**: i18n（バリデーションエラーメッセージの多言語化のため）
 
 **パッケージ**: `internal/config`
 
@@ -365,3 +367,5 @@ sequenceDiagram
 | 版 | 日付 | 変更内容 | 変更理由 |
 |---|------|---------|---------|
 | 1.0 | 2026-02-08 | 初版作成 | — |
+| 1.1 | 2026-02-08 | cli コンポーネントに version.go を追加、依存関係図に CLI -> Counter を追加 | アーキテクチャ設計・CLI 仕様との整合性確保 |
+| 1.2 | 2026-02-08 | Config -> I18n の依存理由を明記 | 整合性チェックによる改善 |
