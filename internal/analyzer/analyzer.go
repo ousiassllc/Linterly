@@ -127,9 +127,6 @@ func calcDirectoryLines(counts []counter.LineCount, codeOnly bool) map[string]in
 	dirLines := make(map[string]int)
 	for _, lc := range counts {
 		dir := filepath.ToSlash(filepath.Dir(lc.Path))
-		if dir == "." {
-			dir = "."
-		}
 		lines := lc.TotalLines
 		if codeOnly {
 			lines = lc.CodeLines
