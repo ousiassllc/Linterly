@@ -1,0 +1,32 @@
+version: 2
+
+project_name: linterly
+
+builds:
+  - main: ./cmd/linterly
+    binary: linterly
+    ldflags:
+      - -s -w
+      - -X github.com/ousiassllc/linterly/internal/cli.Version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  disable: true
