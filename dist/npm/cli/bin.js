@@ -73,4 +73,8 @@ function main() {
   process.exit(128 + (SIGNALS[result.signal] || 1));
 }
 
-main();
+module.exports = { PLATFORMS, getBinaryPath };
+
+if (require.main === module) {
+  main();
+}
