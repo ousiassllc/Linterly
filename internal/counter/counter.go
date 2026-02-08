@@ -26,9 +26,17 @@ func CountFile(path string, mode string) (*LineCount, error) {
 
 	if mode == "code_only" {
 		lang := DetectLanguage(path)
-		result.TotalLines, result.CodeLines = countCodeOnly(f, lang)
+		total, code, err := countCodeOnly(f, lang)
+		if err != nil {
+			return nil, err
+		}
+		result.TotalLines = total
+		result.CodeLines = code
 	} else {
-		total := countAll(f)
+		total, err := countAll(f)
+		if err != nil {
+			return nil, err
+		}
 		result.TotalLines = total
 		result.CodeLines = total
 	}
@@ -85,17 +93,20 @@ func CountFiles(files []string, mode string) ([]LineCount, error) {
 }
 
 // countAll はファイルの全行数をカウントする。
-func countAll(f *os.File) int {
+func countAll(f *os.File) (int, error) {
 	scanner := bufio.NewScanner(f)
 	count := 0
 	for scanner.Scan() {
 		count++
 	}
-	return count
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // countCodeOnly はコード行数を計算する（コメント・空行除外）。
-func countCodeOnly(f *os.File, lang *Language) (total int, code int) {
+func countCodeOnly(f *os.File, lang *Language) (total int, code int, err error) {
 	scanner := bufio.NewScanner(f)
 	inBlock := false
 	// Python docstring のためのトラッカー
@@ -143,7 +154,10 @@ func countCodeOnly(f *os.File, lang *Language) (total int, code int) {
 		code++
 	}
 
-	return total, code
+	if err := scanner.Err(); err != nil {
+		return 0, 0, err
+	}
+	return total, code, nil
 }
 
 // isLineComment は行が行コメントであるかを判定する。

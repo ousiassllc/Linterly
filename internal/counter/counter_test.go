@@ -1,6 +1,8 @@
 package counter
 
 import (
+	"bufio"
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,4 +108,28 @@ func TestCountFile_NoTrailingNewline(t *testing.T) {
 	lc, err := CountFile(path, "all")
 	require.NoError(t, err)
 	assert.Equal(t, 2, lc.TotalLines)
+}
+
+func TestCountFile_ScannerError_AllMode(t *testing.T) {
+	// bufio.MaxScanTokenSize を超える改行なしデータで scanner.Err() がエラーを返すことを確認
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "huge_line.txt")
+
+	data := bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1)
+	require.NoError(t, os.WriteFile(path, data, 0644))
+
+	_, err := CountFile(path, "all")
+	assert.Error(t, err)
+}
+
+func TestCountFile_ScannerError_CodeOnlyMode(t *testing.T) {
+	// bufio.MaxScanTokenSize を超える改行なしデータで scanner.Err() がエラーを返すことを確認
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "huge_line.go")
+
+	data := bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1)
+	require.NoError(t, os.WriteFile(path, data, 0644))
+
+	_, err := CountFile(path, "code_only")
+	assert.Error(t, err)
 }
