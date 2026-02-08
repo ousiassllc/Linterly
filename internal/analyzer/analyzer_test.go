@@ -16,7 +16,7 @@ func newTestConfig() *config.Config {
 			MaxLinesPerDirectory: 2000,
 			WarningThreshold:     10,
 		},
-		CountMode: "all",
+		CountMode: config.CountModeAll,
 	}
 }
 
@@ -146,7 +146,7 @@ func TestAnalyze_Summary(t *testing.T) {
 
 func TestAnalyze_CodeOnlyMode(t *testing.T) {
 	cfg := newTestConfig()
-	cfg.CountMode = "code_only"
+	cfg.CountMode = config.CountModeCodeOnly
 
 	counts := []counter.LineCount{
 		{Path: "src/main.go", TotalLines: 400, CodeLines: 250},

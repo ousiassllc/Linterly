@@ -7,6 +7,11 @@ import (
 	"github.com/ousiassllc/linterly/internal/i18n"
 )
 
+const (
+	FormatText = "text"
+	FormatJSON = "json"
+)
+
 // Reporter は結果出力のインターフェース。
 type Reporter interface {
 	Report(report *analyzer.AnalysisReport, warnings []string) error
@@ -14,7 +19,7 @@ type Reporter interface {
 
 // NewReporter はフォーマット指定に応じた Reporter を返す。
 func NewReporter(format string, translator *i18n.Translator, writer io.Writer) Reporter {
-	if format == "json" {
+	if format == FormatJSON {
 		return &JSONReporter{writer: writer}
 	}
 	return &TextReporter{

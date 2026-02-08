@@ -42,7 +42,7 @@ func Analyze(counts []counter.LineCount, scanResult *scanner.ScanResult, cfg *co
 	maxFile := cfg.Rules.MaxLinesPerFile
 	maxDir := cfg.Rules.MaxLinesPerDirectory
 	thresholdPct := cfg.Rules.WarningThreshold
-	codeOnly := cfg.CountMode == "code_only"
+	codeOnly := cfg.CountMode == config.CountModeCodeOnly
 
 	fileThreshold := calcThreshold(maxFile, thresholdPct)
 	dirThreshold := calcThreshold(maxDir, thresholdPct)
@@ -127,9 +127,6 @@ func calcDirectoryLines(counts []counter.LineCount, codeOnly bool) map[string]in
 	dirLines := make(map[string]int)
 	for _, lc := range counts {
 		dir := filepath.ToSlash(filepath.Dir(lc.Path))
-		if dir == "." {
-			dir = "."
-		}
 		lines := lc.TotalLines
 		if codeOnly {
 			lines = lc.CodeLines

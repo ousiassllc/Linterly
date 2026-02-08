@@ -8,6 +8,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	CountModeAll      = "all"
+	CountModeCodeOnly = "code_only"
+)
+
 // ConfigError は設定ファイルに関するエラーを表す。
 // Code は i18n メッセージキーに対応する。
 type ConfigError struct {
@@ -86,7 +91,7 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("rules.max_lines_per_file", 300)
 	v.SetDefault("rules.max_lines_per_directory", 2000)
 	v.SetDefault("rules.warning_threshold", 10)
-	v.SetDefault("count_mode", "all")
+	v.SetDefault("count_mode", CountModeAll)
 	v.SetDefault("ignore", []string{})
 	v.SetDefault("default_excludes", true)
 	v.SetDefault("language", "en")
@@ -156,7 +161,7 @@ func validate(cfg *Config) error {
 			Message: `"warning_threshold" must be between 0 and 100`,
 		})
 	}
-	if cfg.CountMode != "all" && cfg.CountMode != "code_only" {
+	if cfg.CountMode != CountModeAll && cfg.CountMode != CountModeCodeOnly {
 		errs = append(errs, &ConfigError{
 			Code:    "validation.count_mode",
 			Message: `"count_mode" must be "all" or "code_only"`,

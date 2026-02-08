@@ -32,3 +32,14 @@ func TestNewViolationError(t *testing.T) {
 	assert.Equal(t, ExitViolation, e.Code)
 	assert.Equal(t, "violations found", e.Message)
 }
+
+func TestExitError_Unwrap(t *testing.T) {
+	cause := errors.New("original error")
+	e := &ExitError{Code: 2, Message: "wrapped", Cause: cause}
+	assert.Equal(t, cause, e.Unwrap())
+}
+
+func TestExitError_Unwrap_NilCause(t *testing.T) {
+	e := &ExitError{Code: 2, Message: "no cause"}
+	assert.Nil(t, e.Unwrap())
+}

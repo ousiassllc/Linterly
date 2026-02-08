@@ -1,6 +1,7 @@
 # Build artifacts
 /linterly
 cmd/linterly/linterly
+bin/
 
 # Go build cache
 *.exe

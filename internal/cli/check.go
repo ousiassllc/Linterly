@@ -17,8 +17,10 @@ import (
 )
 
 var (
+	// configFile は --config フラグの値を保持する。
 	configFile string
-	format     string
+	// format は --format フラグの値を保持する。
+	format string
 )
 
 var checkCmd = &cobra.Command{
@@ -31,7 +33,7 @@ var checkCmd = &cobra.Command{
 
 func init() {
 	checkCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file (default is .linterly.yml)")
-	checkCmd.Flags().StringVarP(&format, "format", "f", "text", "output format (text or json)")
+	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text or json)")
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
@@ -42,10 +44,9 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	// config 読み込み前に言語を解決して Translator を初期化
-	lang := i18n.ResolveLanguage(langFlag)
-	translator, err := i18n.New(lang)
+	translator, lang, err := initTranslator()
 	if err != nil {
-		return NewRuntimeError("failed to initialize i18n: %v", err)
+		return err
 	}
 
 	// 設定ファイルの読み込み
@@ -111,6 +112,17 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// initTranslator は langFlag から言語を解決し、Translator を初期化する。
+// 解決された言語コードも返す（config.Language との比較用）。
+func initTranslator() (*i18n.Translator, string, error) {
+	lang := i18n.ResolveLanguage(langFlag)
+	translator, err := i18n.New(lang)
+	if err != nil {
+		return nil, "", NewRuntimeError("failed to initialize i18n: %v", err)
+	}
+	return translator, lang, nil
 }
 
 // translateConfigError は config パッケージのエラーを i18n メッセージに変換する。
