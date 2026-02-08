@@ -7,7 +7,7 @@
 ```yaml
 # チェックルール
 rules:
-  max_lines_per_file: 400
+  max_lines_per_file: 300
   max_lines_per_directory: 2000
   warning_threshold: 10          # %（デフォルト: 10）
 
@@ -34,7 +34,7 @@ language: en                     # en | ja（デフォルト: en）
 
 | フィールド | 型 | 必須 | デフォルト | 説明 |
 |-----------|-----|------|-----------|------|
-| `max_lines_per_file` | integer | いいえ | `400` | 1ファイルあたりの最大行数 |
+| `max_lines_per_file` | integer | いいえ | `300` | 1ファイルあたりの最大行数 |
 | `max_lines_per_directory` | integer | いいえ | `2000` | ディレクトリ直下ファイルの合計最大行数 |
 | `warning_threshold` | integer | いいえ | `10` | 警告閾値（%）。超過率がこの値以内なら warn、超えたら error |
 
@@ -81,7 +81,7 @@ language: en                     # en | ja（デフォルト: en）
 
 ```yaml
 rules:
-  max_lines_per_file: 400
+  max_lines_per_file: 300
 ```
 
 最小構成では以下のデフォルト値が適用される：
@@ -169,7 +169,7 @@ graph TD
 # https://github.com/ousiassllc/linterly
 
 rules:
-  max_lines_per_file: 400
+  max_lines_per_file: 300
   max_lines_per_directory: 2000
   warning_threshold: 10
 
@@ -185,3 +185,4 @@ count_mode: all
 |---|------|---------|---------|
 | 1.0 | 2026-02-08 | 初版作成 | — |
 | 1.1 | 2026-02-08 | バリデーション記述の明確化、最小構成の注記追加、探索順序に LINTERLY_CONFIG を追加 | CLI 仕様との整合性確保、記述の正確性向上 |
+| 1.2 | 2026-02-08 | `max_lines_per_file` のデフォルト値を 400 → 300 に変更 | デフォルト値の見直し |
