@@ -4,6 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var langFlag string
+
 var rootCmd = &cobra.Command{
 	Use:           "linterly",
 	Short:         "Linterly - A code line count linter",
@@ -13,6 +15,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVar(&langFlag, "lang", "", "language for messages (en, ja)")
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(versionCmd)

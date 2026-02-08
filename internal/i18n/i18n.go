@@ -3,6 +3,7 @@ package i18n
 import (
 	"embed"
 	"fmt"
+	"os"
 
 	"gopkg.in/yaml.v3"
 )
@@ -63,4 +64,17 @@ func (t *Translator) T(key string, args ...any) string {
 // Lang は Translator の言語を返す。
 func (t *Translator) Lang() string {
 	return t.lang
+}
+
+// ResolveLanguage は config 読み込み前に言語を決定する。
+// flagLang が非空ならそれを使い、空なら LINTERLY_LANG 環境変数、
+// それも空ならデフォルト "en" を返す。
+func ResolveLanguage(flagLang string) string {
+	if flagLang != "" {
+		return flagLang
+	}
+	if envLang := os.Getenv("LINTERLY_LANG"); envLang != "" {
+		return envLang
+	}
+	return "en"
 }
