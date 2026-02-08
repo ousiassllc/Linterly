@@ -1,0 +1,13 @@
+rules:
+  max_lines_per_file: 500
+  max_lines_per_directory: 3000
+  warning_threshold: 20
+
+count_mode: code_only
+
+ignore:
+  - "vendor/**"
+  - "*.pb.go"
+
+default_excludes: false
+language: ja
