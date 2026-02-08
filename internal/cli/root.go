@@ -2,10 +2,7 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
-
-var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "linterly",
@@ -14,20 +11,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .linterly.yaml)")
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName(".linterly")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(".")
-	}
-	viper.AutomaticEnv()
-	_ = viper.ReadInConfig()
+	rootCmd.AddCommand(checkCmd)
+	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // Execute runs the root command.
