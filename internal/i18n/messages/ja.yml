@@ -1,0 +1,20 @@
+# Japanese messages
+check.warn: "WARN  %s (%d 行, 上限: %d)"
+check.error: "ERROR %s (%d 行, 上限: %d)"
+check.summary: "結果: %d エラー, %d 警告, %d パス"
+check.no_violations: "違反なし。すべてのチェックに合格しました。"
+ignore.both_defined: >-
+  .linterlyignore と設定ファイルの ignore が両方定義されています。
+  .linterlyignore が優先されます。設定ファイルの ignore は無視されます。
+init.created: ".linterly.yml を作成しました"
+init.overwrite: ".linterly.yml が既に存在します。上書きしますか？ [y/N]:"
+init.overwritten: ".linterly.yml を上書きしました"
+version.info: "linterly %s (%s, %s/%s)"
+validation.rules_required: '"rules" セクションが必要です'
+validation.max_lines_per_file: '"max_lines_per_file" は正の整数である必要があります'
+validation.max_lines_per_directory: '"max_lines_per_directory" は正の整数である必要があります'
+validation.warning_threshold: '"warning_threshold" は 0 から 100 の範囲である必要があります'
+validation.count_mode: '"count_mode" は "all" または "code_only" である必要があります'
+validation.language: '"language" は "en" または "ja" である必要があります'
+err.config_not_found: "設定ファイルが見つかりません。'linterly init' を実行して作成してください。"
+err.config_parse: "設定ファイルの解析に失敗しました: %s"

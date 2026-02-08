@@ -1,0 +1,20 @@
+# English messages
+check.warn: "WARN  %s (%d lines, limit: %d)"
+check.error: "ERROR %s (%d lines, limit: %d)"
+check.summary: "Results: %d error(s), %d warning(s), %d passed"
+check.no_violations: "No violations found. All checks passed."
+ignore.both_defined: >-
+  Both .linterlyignore and ignore in config file are defined.
+  .linterlyignore takes precedence. ignore in config file is ignored.
+init.created: "Created .linterly.yml"
+init.overwrite: ".linterly.yml already exists. Overwrite? [y/N]:"
+init.overwritten: "Overwritten .linterly.yml"
+version.info: "linterly %s (%s, %s/%s)"
+validation.rules_required: '"rules" section is required'
+validation.max_lines_per_file: '"max_lines_per_file" must be a positive integer'
+validation.max_lines_per_directory: '"max_lines_per_directory" must be a positive integer'
+validation.warning_threshold: '"warning_threshold" must be between 0 and 100'
+validation.count_mode: '"count_mode" must be "all" or "code_only"'
+validation.language: '"language" must be "en" or "ja"'
+err.config_not_found: "Config file not found. Run 'linterly init' to create one."
+err.config_parse: "Failed to parse config file: %s"
