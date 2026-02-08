@@ -1,5 +1,7 @@
 pre-commit:
   commands:
+    format:
+      run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
     lint:
       run: golangci-lint run
     test:
@@ -7,9 +9,5 @@ pre-commit:
 
 pre-push:
   commands:
-    lint:
-      run: golangci-lint run
-    test:
-      run: go test ./...
     build:
       run: go build -o /dev/null ./cmd/linterly
