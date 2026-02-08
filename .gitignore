@@ -2,6 +2,7 @@
 /linterly
 cmd/linterly/linterly
 bin/
+dist/
 
 # Go build cache
 *.exe
