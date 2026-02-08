@@ -17,7 +17,7 @@ graph TD
     CLI --> Counter
     CLI --> Analyzer
     CLI --> Reporter
-    Config --> I18n
+    CLI --> I18n
     Scanner --> Config
     Counter --> Config
     Analyzer --> Counter
@@ -61,7 +61,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 
 **責務**: 設定ファイル・ignore ファイルの読み込み、バリデーション、デフォルト値の管理。
 
-**依存**: i18n（バリデーションエラーメッセージの多言語化のため）
+**依存**: なし（エラーコードを `ConfigError.Code` に持たせ、CLI 層で i18n 変換する）
 
 **パッケージ**: `internal/config`
 
@@ -169,7 +169,7 @@ type LineCount struct {
 func CountFile(path string, mode string) (*LineCount, error)
 
 // CountFiles は複数ファイルの行数を並行してカウントする
-func CountFiles(files []scanner.FileEntry, mode string) ([]LineCount, error)
+func CountFiles(files []string, mode string) ([]LineCount, error)
 ```
 
 #### 言語定義
@@ -267,7 +267,7 @@ type Reporter interface {
 }
 
 // NewReporter はフォーマット指定に応じた Reporter を返す
-func NewReporter(format string, lang string, writer io.Writer) Reporter
+func NewReporter(format string, translator *i18n.Translator, writer io.Writer) Reporter
 ```
 
 #### テキスト出力のカラー
@@ -309,6 +309,10 @@ func New(lang string) (*Translator, error)
 // T はメッセージキーに対応する翻訳テキストを返す
 // args はプレースホルダーの置換に使用する
 func (t *Translator) T(key string, args ...any) string
+
+// ResolveLanguage は config 読み込み前に言語を決定する
+// 優先順位: flagLang > LINTERLY_LANG 環境変数 > デフォルト "en"
+func ResolveLanguage(flagLang string) string
 ```
 
 #### メッセージファイル例
@@ -354,7 +358,7 @@ sequenceDiagram
     Cfg-->>CLI: Config, warnings
     CLI->>Scn: Scan(targetPath, Config)
     Scn-->>CLI: ScanResult
-    CLI->>Cnt: CountFiles(ScanResult.Files, countMode)
+    CLI->>Cnt: CountFiles(filePaths, countMode)
     Cnt-->>CLI: []LineCount
     CLI->>Ana: Analyze([]LineCount, ScanResult, Config)
     Ana-->>CLI: AnalysisReport
@@ -369,3 +373,4 @@ sequenceDiagram
 | 1.0 | 2026-02-08 | 初版作成 | — |
 | 1.1 | 2026-02-08 | cli コンポーネントに version.go を追加、依存関係図に CLI -> Counter を追加 | アーキテクチャ設計・CLI 仕様との整合性確保 |
 | 1.2 | 2026-02-08 | Config -> I18n の依存理由を明記 | 整合性チェックによる改善 |
+| 1.3 | 2026-02-08 | CountFiles のシグネチャを実装に合わせて修正、NewReporter のシグネチャを更新、Config の i18n 依存を CLI 経由に変更、ResolveLanguage を追加 | ドキュメント乖離レポート (#3) 対応 |

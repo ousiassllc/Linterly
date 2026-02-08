@@ -206,6 +206,21 @@ func TestT_NoViolations(t *testing.T) {
 	assert.Equal(t, "違反なし。すべてのチェックに合格しました。", trJa.T("check.no_violations"))
 }
 
+func TestResolveLanguage_FlagTakesPrecedence(t *testing.T) {
+	t.Setenv("LINTERLY_LANG", "ja")
+	assert.Equal(t, "en", ResolveLanguage("en"))
+}
+
+func TestResolveLanguage_EnvVar(t *testing.T) {
+	t.Setenv("LINTERLY_LANG", "ja")
+	assert.Equal(t, "ja", ResolveLanguage(""))
+}
+
+func TestResolveLanguage_Default(t *testing.T) {
+	t.Setenv("LINTERLY_LANG", "")
+	assert.Equal(t, "en", ResolveLanguage(""))
+}
+
 func TestAllKeysExistInBothLanguages(t *testing.T) {
 	en, err := New("en")
 	require.NoError(t, err)

@@ -7,7 +7,7 @@ ignore.both_defined: >-
   .linterlyignore と設定ファイルの ignore が両方定義されています。
   .linterlyignore が優先されます。設定ファイルの ignore は無視されます。
 init.created: ".linterly.yml を作成しました"
-init.overwrite: ".linterly.yml が既に存在します。上書きしますか？ [y/N]:"
+init.overwrite: ".linterly.yml は既に存在します。上書きしますか？ [y/N]:"
 init.overwritten: ".linterly.yml を上書きしました"
 version.info: "linterly %s (%s, %s/%s)"
 validation.rules_required: '"rules" セクションが必要です'
