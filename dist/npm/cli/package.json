@@ -1,0 +1,29 @@
+{
+  "name": "@linterly/cli",
+  "version": "0.0.0",
+  "description": "Linterly - a fast line count linter for clean code",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ousiassllc/Linterly.git"
+  },
+  "homepage": "https://github.com/ousiassllc/Linterly#readme",
+  "bugs": {
+    "url": "https://github.com/ousiassllc/Linterly/issues"
+  },
+  "keywords": ["linter", "line-count", "code-quality", "cli"],
+  "bin": {
+    "linterly": "bin.js"
+  },
+  "files": ["bin.js"],
+  "engines": {
+    "node": ">=14"
+  },
+  "optionalDependencies": {
+    "@linterly/darwin-arm64": "0.0.0",
+    "@linterly/darwin-x64": "0.0.0",
+    "@linterly/linux-arm64": "0.0.0",
+    "@linterly/linux-x64": "0.0.0",
+    "@linterly/win32-x64": "0.0.0"
+  }
+}
