@@ -79,6 +79,7 @@ linterly check [path] [flags]
 |--------|------|-----------|------|
 | `--config` | `-c` | `.linterly.yml` | 設定ファイルのパス |
 | `--format` | `-f` | `text` | 出力形式（`text` / `json`） |
+| `--lang` | | | メッセージの言語（`en` / `ja`）。設定ファイルの `language` より優先 |
 
 #### テキスト出力例
 
@@ -89,7 +90,7 @@ $ linterly check
   ERROR src/service.go (450 lines, limit: 300)
   ERROR src/ (2500 lines, limit: 2000)
 
-Results: 2 error(s), 1 warning, 42 passed
+Results: 2 error(s), 1 warning(s), 42 passed
 ```
 
 日本語設定時：
@@ -153,8 +154,7 @@ $ linterly check
 ```
 $ linterly check
 
-  WARN  Both .linterlyignore and ignore in config file are defined.
-        .linterlyignore takes precedence. ignore in config file is ignored.
+  WARN  Both .linterlyignore and ignore in config file are defined. .linterlyignore takes precedence. ignore in config file is ignored.
 
   WARN  src/handler.go (325 lines, limit: 300)
   ...
@@ -194,8 +194,11 @@ Overwritten .linterly.yml
 
 ```
 $ linterly version
-linterly v1.0.0 (go1.22.0, linux/amd64)
+linterly v1.0.0 (go1.25.6, linux/amd64)
 ```
+
+- バージョン文字列はビルド時に `-ldflags` で設定される。開発時は `dev` が表示される
+- `v` プレフィックスは `git tag` のタグ名に含めることを前提とする
 
 ## 3. 終了コード
 
@@ -210,9 +213,12 @@ linterly v1.0.0 (go1.22.0, linux/amd64)
 | 変数 | 説明 | デフォルト |
 |------|------|-----------|
 | `LINTERLY_CONFIG` | 設定ファイルのパス（`--config` フラグと同等） | なし |
+| `LINTERLY_LANG` | メッセージの言語（`en` / `ja`）。`--lang` フラグと同等 | なし |
 | `NO_COLOR` | 設定するとカラー出力を無効化する（[no-color.org](https://no-color.org) 準拠） | なし |
 
-- `--config` フラグが指定された場合は環境変数より優先される
+- `--config` フラグが指定された場合は `LINTERLY_CONFIG` より優先される
+- `--lang` フラグが指定された場合は `LINTERLY_LANG` より優先される
+- 言語の優先順位: `--lang` フラグ > `LINTERLY_LANG` 環境変数 > 設定ファイルの `language` > デフォルト `en`
 
 ## 改訂履歴
 
@@ -220,3 +226,4 @@ linterly v1.0.0 (go1.22.0, linux/amd64)
 |---|------|---------|---------|
 | 1.0 | 2026-02-08 | 初版作成 | — |
 | 1.1 | 2026-02-08 | テキスト出力例のエラー件数を 2 に修正 | JSON 出力例・出力例の ERROR 件数との整合性確保 |
+| 1.2 | 2026-02-08 | warning(s) 表記修正、ignore 重複警告を 1 行表記に修正、version 出力例更新、--lang フラグと LINTERLY_LANG 環境変数を追加 | ドキュメント乖離レポート (#3) 対応 |
