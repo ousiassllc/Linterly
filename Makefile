@@ -34,7 +34,7 @@ fmt: ## コードをフォーマット
 clean: ## ビルド成果物を削除
 	rm -rf bin/ dist/
 
-release: ## GoReleaser でリリース
+release: ## GoReleaser でリリース（要 GITHUB_TOKEN）
 	$(GORELEASER) release --clean
 
 release-check: ## GoReleaser の設定を検証
