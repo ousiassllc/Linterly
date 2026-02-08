@@ -5,9 +5,11 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "linterly",
-	Short: "Linterly - A code line count linter",
-	Long:  "Linterly checks source code line counts against configured rules and reports violations.",
+	Use:           "linterly",
+	Short:         "Linterly - A code line count linter",
+	Long:          "Linterly checks source code line counts against configured rules and reports violations.",
+	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 func init() {

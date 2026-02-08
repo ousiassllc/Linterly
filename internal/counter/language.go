@@ -83,9 +83,9 @@ var languages = []Language{
 		BlockCommentEnd:   "*/",
 	},
 	{
-		Name:             "HTML",
-		Extensions:       []string{".html", ".htm", ".xml", ".svg"},
-		LineCommentStart: nil,
+		Name:              "HTML",
+		Extensions:        []string{".html", ".htm", ".xml", ".svg"},
+		LineCommentStart:  nil,
 		BlockCommentStart: "<!--",
 		BlockCommentEnd:   "-->",
 	},

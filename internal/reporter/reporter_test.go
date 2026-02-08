@@ -113,7 +113,7 @@ func TestJSONReporter_Output(t *testing.T) {
 	var output jsonOutput
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &output))
 
-	assert.Len(t, output.Results, 4)      // JSON には pass を含む全結果
+	assert.Len(t, output.Results, 4) // JSON には pass を含む全結果
 	assert.Equal(t, 1, output.Summary.Errors)
 	assert.Equal(t, 1, output.Summary.Warnings)
 	assert.Equal(t, 2, output.Summary.Passed)

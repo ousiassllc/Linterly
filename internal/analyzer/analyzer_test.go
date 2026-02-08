@@ -94,8 +94,8 @@ func TestAnalyze_DirectoryCheck(t *testing.T) {
 	dirResult := findResult(report, "src/")
 	assert.NotNil(t, dirResult)
 	assert.Equal(t, "directory", dirResult.Type)
-	assert.Equal(t, 2200, dirResult.Lines) // 1000 + 1200
-	assert.Equal(t, SeverityWarn, dirResult.Severity)  // 2200 <= 2200 (threshold)
+	assert.Equal(t, 2200, dirResult.Lines)            // 1000 + 1200
+	assert.Equal(t, SeverityWarn, dirResult.Severity) // 2200 <= 2200 (threshold)
 }
 
 func TestAnalyze_DirectoryOnlyDirectFiles(t *testing.T) {

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -43,31 +42,31 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	// 設定ファイルの読み込み
 	cfg, err := config.Load(configFile)
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return NewRuntimeError("%s", err)
 	}
 
 	// i18n の初期化
 	translator, err := i18n.New(cfg.Language)
 	if err != nil {
-		return fmt.Errorf("failed to initialize i18n: %w", err)
+		return NewRuntimeError("failed to initialize i18n: %v", err)
 	}
 
 	// ignore パターンの取得と警告
 	_, warnings, err := cfg.IgnorePatterns()
 	if err != nil {
-		return fmt.Errorf("failed to load ignore patterns: %w", err)
+		return NewRuntimeError("failed to load ignore patterns: %v", err)
 	}
 
 	// ファイル走査
 	scanResult, err := scanner.Scan(targetPath, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to scan files: %w", err)
+		return NewRuntimeError("failed to scan files: %v", err)
 	}
 
 	// ファイルパスを絶対パスに変換（カウント用）
 	absTarget, err := filepath.Abs(targetPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve path: %w", err)
+		return NewRuntimeError("failed to resolve path: %v", err)
 	}
 
 	filePaths := make([]string, len(scanResult.Files))
@@ -78,7 +77,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	// 行数カウント
 	counts, err := counter.CountFiles(filePaths, cfg.CountMode)
 	if err != nil {
-		return fmt.Errorf("failed to count lines: %w", err)
+		return NewRuntimeError("failed to count lines: %v", err)
 	}
 
 	// カウント結果のパスを相対パスに戻す
@@ -92,12 +91,12 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	// 結果出力
 	rep := reporter.NewReporter(format, translator, os.Stdout)
 	if err := rep.Report(report, warnings); err != nil {
-		return fmt.Errorf("failed to write report: %w", err)
+		return NewRuntimeError("failed to write report: %v", err)
 	}
 
 	// 終了コード
 	if report.Errors > 0 {
-		os.Exit(1)
+		return NewViolationError()
 	}
 
 	return nil
