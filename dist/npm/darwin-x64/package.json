@@ -1,0 +1,10 @@
+{
+  "name": "@linterly/darwin-x64",
+  "version": "0.0.0",
+  "description": "Linterly binary for macOS x64 (Intel)",
+  "license": "MIT",
+  "preferUnplugged": true,
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "files": ["bin/linterly"]
+}

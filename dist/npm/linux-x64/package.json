@@ -1,0 +1,10 @@
+{
+  "name": "@linterly/linux-x64",
+  "version": "0.0.0",
+  "description": "Linterly binary for Linux x64",
+  "license": "MIT",
+  "preferUnplugged": true,
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "files": ["bin/linterly"]
+}
