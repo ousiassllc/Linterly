@@ -4,7 +4,7 @@ LDFLAGS := -ldflags "-X github.com/ousiassllc/linterly/internal/cli.Version=$(VE
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build run test test-v cover lint fmt clean init setup-hooks
+.PHONY: help build run test test-v cover lint fmt clean setup-hooks release release-dry-run
 
 help: ## ヘルプを表示
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -31,7 +31,13 @@ fmt: ## コードをフォーマット
 	gofmt -w .
 
 clean: ## ビルド成果物を削除
-	rm -rf bin/
+	rm -rf bin/ dist/
+
+release: ## GoReleaser でリリース
+	goreleaser release --clean
+
+release-dry-run: ## GoReleaser でスナップショットビルド（ドライラン）
+	goreleaser release --snapshot --clean
 
 setup-hooks: ## lefthook で Git Hooks をインストール
 	lefthook install
