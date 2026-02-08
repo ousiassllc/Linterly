@@ -31,7 +31,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(filename); err == nil {
 		fmt.Print(translator.T("init.overwrite") + " ")
 		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return nil // 入力がない場合は上書きしない
+		}
 		answer = strings.TrimSpace(strings.ToLower(answer))
 		if answer != "y" && answer != "yes" {
 			return nil
