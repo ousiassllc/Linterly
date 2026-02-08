@@ -1,0 +1,2 @@
+rules:
+  max_lines_per_file: 300

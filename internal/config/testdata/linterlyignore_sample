@@ -1,0 +1,7 @@
+# Comment line
+vendor/
+*.pb.go
+
+# Another comment
+generated/
+!important.go

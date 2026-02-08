@@ -1,0 +1,7 @@
+rules:
+  max_lines_per_file: -1
+  max_lines_per_directory: 0
+  warning_threshold: 200
+
+count_mode: unknown
+language: zh
