@@ -1,13 +1,37 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/viper"
 )
+
+// ConfigError は設定ファイルに関するエラーを表す。
+// Code は i18n メッセージキーに対応する。
+type ConfigError struct {
+	Code    string
+	Message string
+	Detail  string // err.config_parse 用の詳細情報
+}
+
+func (e *ConfigError) Error() string {
+	return e.Message
+}
+
+// ValidationErrors は複数のバリデーションエラーをまとめる。
+type ValidationErrors struct {
+	Errors []*ConfigError
+}
+
+func (e *ValidationErrors) Error() string {
+	msgs := make([]string, len(e.Errors))
+	for i, err := range e.Errors {
+		msgs[i] = err.Message
+	}
+	return strings.Join(msgs, "; ")
+}
 
 // DefaultConfigTemplate は linterly init で生成する設定テンプレート。
 const DefaultConfigTemplate = `# Linterly 設定ファイル
@@ -52,7 +76,10 @@ func Load(configPath string) (*Config, error) {
 
 	// rules セクションの存在チェック（デフォルト値設定前に行う）
 	if !v.IsSet("rules") {
-		return nil, errors.New(`"rules" section is required`)
+		return nil, &ConfigError{
+			Code:    "validation.rules_required",
+			Message: `"rules" section is required`,
+		}
 	}
 
 	// デフォルト値の設定（rules 存在チェック後に行う）
@@ -66,7 +93,11 @@ func Load(configPath string) (*Config, error) {
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		return nil, &ConfigError{
+			Code:    "err.config_parse",
+			Message: fmt.Sprintf("failed to parse config file: %s", err),
+			Detail:  err.Error(),
+		}
 	}
 
 	if err := validate(&cfg); err != nil {
@@ -97,31 +128,49 @@ func findAndReadConfig(v *viper.Viper, configPath string) error {
 		}
 	}
 
-	return errors.New("config file not found")
+	return &ConfigError{
+		Code:    "err.config_not_found",
+		Message: "config file not found",
+	}
 }
 
 // validate は Config の各フィールドをバリデーションする。
 func validate(cfg *Config) error {
-	var errs []string
+	var errs []*ConfigError
 
 	if cfg.Rules.MaxLinesPerFile <= 0 {
-		errs = append(errs, `"max_lines_per_file" must be a positive integer`)
+		errs = append(errs, &ConfigError{
+			Code:    "validation.max_lines_per_file",
+			Message: `"max_lines_per_file" must be a positive integer`,
+		})
 	}
 	if cfg.Rules.MaxLinesPerDirectory <= 0 {
-		errs = append(errs, `"max_lines_per_directory" must be a positive integer`)
+		errs = append(errs, &ConfigError{
+			Code:    "validation.max_lines_per_directory",
+			Message: `"max_lines_per_directory" must be a positive integer`,
+		})
 	}
 	if cfg.Rules.WarningThreshold < 0 || cfg.Rules.WarningThreshold > 100 {
-		errs = append(errs, `"warning_threshold" must be between 0 and 100`)
+		errs = append(errs, &ConfigError{
+			Code:    "validation.warning_threshold",
+			Message: `"warning_threshold" must be between 0 and 100`,
+		})
 	}
 	if cfg.CountMode != "all" && cfg.CountMode != "code_only" {
-		errs = append(errs, `"count_mode" must be "all" or "code_only"`)
+		errs = append(errs, &ConfigError{
+			Code:    "validation.count_mode",
+			Message: `"count_mode" must be "all" or "code_only"`,
+		})
 	}
 	if cfg.Language != "en" && cfg.Language != "ja" {
-		errs = append(errs, `"language" must be "en" or "ja"`)
+		errs = append(errs, &ConfigError{
+			Code:    "validation.language",
+			Message: `"language" must be "en" or "ja"`,
+		})
 	}
 
 	if len(errs) > 0 {
-		return errors.New(strings.Join(errs, "; "))
+		return &ValidationErrors{Errors: errs}
 	}
 	return nil
 }

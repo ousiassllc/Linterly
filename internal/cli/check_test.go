@@ -173,3 +173,73 @@ default_excludes: false
 	err := runCheck(checkCmd, []string{targetDir})
 	assert.NoError(t, err)
 }
+
+func TestRunCheck_ValidationError_Japanese(t *testing.T) {
+	old := configFile
+	oldLang := langFlag
+	oldFormat := format
+	defer func() {
+		configFile = old
+		langFlag = oldLang
+		format = oldFormat
+	}()
+
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "invalid.yml")
+	helperWriteFile(t, cfgPath, "rules:\n  max_lines_per_file: -1\n")
+	configFile = cfgPath
+	langFlag = "ja"
+
+	err := runCheck(checkCmd, []string{tmpDir})
+	require.Error(t, err)
+
+	var exitErr *ExitError
+	require.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, ExitRuntimeError, exitErr.Code)
+	// 日本語メッセージが含まれることを確認
+	assert.Contains(t, exitErr.Message, "正の整数")
+}
+
+func TestRunCheck_ConfigNotFound_Japanese(t *testing.T) {
+	old := configFile
+	oldLang := langFlag
+	defer func() {
+		configFile = old
+		langFlag = oldLang
+	}()
+
+	tmpDir := t.TempDir()
+	configFile = filepath.Join(tmpDir, "nonexistent.yml")
+	langFlag = "ja"
+
+	err := runCheck(checkCmd, []string{tmpDir})
+	require.Error(t, err)
+
+	var exitErr *ExitError
+	require.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, ExitRuntimeError, exitErr.Code)
+}
+
+func TestRunCheck_MissingRulesSection_Japanese(t *testing.T) {
+	old := configFile
+	oldLang := langFlag
+	defer func() {
+		configFile = old
+		langFlag = oldLang
+	}()
+
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "bad.yml")
+	helperWriteFile(t, cfgPath, "not_rules: true\n")
+	configFile = cfgPath
+	langFlag = "ja"
+
+	err := runCheck(checkCmd, []string{"."})
+	require.Error(t, err)
+
+	var exitErr *ExitError
+	require.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, ExitRuntimeError, exitErr.Code)
+	// 日本語メッセージが含まれることを確認
+	assert.Contains(t, exitErr.Message, "セクションが必要です")
+}

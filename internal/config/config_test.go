@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,12 +53,20 @@ func TestLoad_MissingRulesSection(t *testing.T) {
 	_, err := Load("testdata/missing_rules.yml")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `"rules" section is required`)
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "validation.rules_required", cfgErr.Code)
 }
 
 func TestLoad_InvalidMaxLinesPerFile(t *testing.T) {
 	_, err := Load("testdata/invalid_max_lines_per_file.yml")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `"max_lines_per_file" must be a positive integer`)
+
+	var valErrs *ValidationErrors
+	require.True(t, errors.As(err, &valErrs))
+	assert.Contains(t, codeList(valErrs), "validation.max_lines_per_file")
 }
 
 func TestLoad_InvalidMaxLinesPerDirectory(t *testing.T) {
@@ -99,6 +108,16 @@ func TestLoad_MultipleValidationErrors(t *testing.T) {
 	assert.Contains(t, errMsg, `"warning_threshold" must be between 0 and 100`)
 	assert.Contains(t, errMsg, `"count_mode" must be "all" or "code_only"`)
 	assert.Contains(t, errMsg, `"language" must be "en" or "ja"`)
+
+	var valErrs *ValidationErrors
+	require.True(t, errors.As(err, &valErrs))
+	codes := codeList(valErrs)
+	assert.Contains(t, codes, "validation.max_lines_per_file")
+	assert.Contains(t, codes, "validation.max_lines_per_directory")
+	assert.Contains(t, codes, "validation.warning_threshold")
+	assert.Contains(t, codes, "validation.count_mode")
+	assert.Contains(t, codes, "validation.language")
+	assert.Len(t, valErrs.Errors, 5)
 }
 
 func TestLoad_FileNotFound(t *testing.T) {
@@ -174,6 +193,10 @@ func TestLoad_ConfigPathEmpty_NoConfigFound(t *testing.T) {
 	_, err = Load("")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "config file not found")
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "err.config_not_found", cfgErr.Code)
 }
 
 func TestLoad_WarningThresholdZeroIsValid(t *testing.T) {
@@ -213,4 +236,13 @@ func TestDefaultConfigTemplate(t *testing.T) {
 	assert.Contains(t, DefaultConfigTemplate, "count_mode: all")
 	assert.Contains(t, DefaultConfigTemplate, "# default_excludes: true")
 	assert.Contains(t, DefaultConfigTemplate, "# language: en")
+}
+
+// codeList は ValidationErrors から Code の一覧を返すヘルパー。
+func codeList(ve *ValidationErrors) []string {
+	codes := make([]string, len(ve.Errors))
+	for i, e := range ve.Errors {
+		codes[i] = e.Code
+	}
+	return codes
 }
