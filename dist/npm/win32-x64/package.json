@@ -1,0 +1,17 @@
+{
+  "name": "@linterly/win32-x64",
+  "version": "0.1.0",
+  "description": "Linterly CLI binary for Windows x64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ousiassllc/linterly.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": ["linterly.exe"],
+  "preferUnplugged": true
+}

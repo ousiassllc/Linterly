@@ -2,7 +2,19 @@
 /linterly
 cmd/linterly/linterly
 bin/
-dist/
+dist/*
+
+# npm package definitions (tracked)
+!dist/npm/
+dist/npm/*
+!dist/npm/cli/
+!dist/npm/linux-x64/
+!dist/npm/linux-arm64/
+!dist/npm/darwin-x64/
+!dist/npm/darwin-arm64/
+!dist/npm/win32-x64/
+dist/npm/*/linterly
+dist/npm/*/linterly.exe
 
 # Go build cache
 *.exe

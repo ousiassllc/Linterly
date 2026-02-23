@@ -17,22 +17,16 @@
 
 ```bash
 # Go
-go install github.com/ousiassllc/linterly@latest
+go install github.com/ousiassllc/linterly/cmd/linterly@latest
 
-# npm
+# npm（グローバル）
 npm install -g @linterly/cli
 
-# pip
-pip install linterly
-
-# cargo
-cargo install linterly
-
-# Docker
-docker pull ghcr.io/ousiassllc/linterly
+# npm（プロジェクトローカル・推奨）
+npm install -D @linterly/cli
 ```
 
-GitHub Releases からプラットフォーム別のバイナリも入手できます。
+[GitHub Releases](https://github.com/ousiassllc/linterly/releases) からプラットフォーム別のバイナリも入手できます。
 
 ## 使い方
 
@@ -110,6 +104,30 @@ default_excludes: true           # デフォルト除外の有効/無効
 
 `.linterlyignore` を gitignore と同じ形式で記述できます。`.linterlyignore` の設定は設定ファイルの `ignore` より優先されます。
 
+## Git Hooks との連携
+
+### Lefthook
+
+```yaml
+# lefthook.yml
+pre-commit:
+  commands:
+    linterly:
+      glob: "*.go"
+      run: linterly check {staged_files}
+```
+
+### Husky + lint-staged
+
+```json
+// package.json
+{
+  "lint-staged": {
+    "*.{js,ts,go,py,rb}": ["linterly check"]
+  }
+}
+```
+
 ## CI での利用
 
 ### GitHub Actions
@@ -122,7 +140,7 @@ default_excludes: true           # デフォルト除外の有効/無効
 
 ```yaml
 - run: |
-    go install github.com/ousiassllc/linterly@latest
+    go install github.com/ousiassllc/linterly/cmd/linterly@latest
     linterly check
 ```
 
