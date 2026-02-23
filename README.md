@@ -1,56 +1,58 @@
 # Linterly
 
-コードの行数をチェックする軽量リンターツール。ファイル単位・ディレクトリ単位で行数制限を設定し、肥大化したコードを早期に検出します。
+A lightweight linter that checks code line counts. Set line limits per file and per directory to detect bloated code early.
 
-## 特徴
+> [日本語](./README.ja.md)
 
-- **ファイル行数チェック** — ファイルごとの行数上限を設定（デフォルト: 300行）
-- **ディレクトリ行数チェック** — ディレクトリ直下ファイルの合計行数を制限（デフォルト: 2,000行）
-- **段階的な違反レベル** — `warn`（閾値内）と `error`（閾値超過）を区別
-- **コード行のみカウント** — コメント・空行を除外するモードに対応
-- **多言語コメント認識** — Go, Rust, JavaScript/TypeScript, Python, Ruby, Java, C/C++ など
-- **柔軟な除外設定** — `.linterlyignore`（gitignore形式）と設定ファイルによる除外
-- **豊富なデフォルト除外** — `node_modules/`, `vendor/`, `.git/`, `dist/` など自動除外
-- **日本語対応** — CLI出力の日英切り替え
+## Features
 
-## インストール
+- **File line count check** — Set a maximum line count per file (default: 300)
+- **Directory line count check** — Limit total lines of files directly under a directory (default: 2,000)
+- **Graduated violation levels** — Distinguish between `warn` (within threshold) and `error` (exceeds threshold)
+- **Code-only counting** — Option to exclude comments and blank lines
+- **Multi-language comment recognition** — Go, Rust, JavaScript/TypeScript, Python, Ruby, Java, C/C++, and more
+- **Flexible exclusion** — `.linterlyignore` (gitignore format) and config file exclusions
+- **Rich default exclusions** — Automatically excludes `node_modules/`, `vendor/`, `.git/`, `dist/`, etc.
+- **i18n support** — CLI output in English and Japanese
+
+## Installation
 
 ```bash
 # Go
 go install github.com/ousiassllc/linterly/cmd/linterly@latest
 
-# npm（グローバル）
+# npm (global)
 npm install -g @linterly/cli
 
-# npm（プロジェクトローカル・推奨）
+# npm (project-local, recommended)
 npm install -D @linterly/cli
 ```
 
-[GitHub Releases](https://github.com/ousiassllc/linterly/releases) からプラットフォーム別のバイナリも入手できます。npm パッケージの詳細は [@linterly/cli](https://www.npmjs.com/package/@linterly/cli) を参照してください。
+Platform-specific binaries are also available from [GitHub Releases](https://github.com/ousiassllc/linterly/releases). See [@linterly/cli](https://www.npmjs.com/package/@linterly/cli) on npm for package details.
 
-## 使い方
+## Usage
 
 ```bash
-# カレントディレクトリをチェック
+# Check the current directory
 linterly check
 
-# 特定のパスをチェック
+# Check a specific path
 linterly check src/
 
-# JSON形式で出力
+# Output in JSON format
 linterly check --format json
 
-# 設定ファイルを指定
+# Specify a config file
 linterly check --config .linterly.yml
 
-# 設定ファイルを生成
+# Generate a config file
 linterly init
 
-# バージョン表示
+# Show version
 linterly version
 ```
 
-### 出力例
+### Example Output
 
 ```
   WARN  src/handler.go (325 lines, limit: 300)
@@ -60,23 +62,23 @@ linterly version
 Results: 2 error(s), 1 warning, 42 passed
 ```
 
-### 終了コード
+### Exit Codes
 
-| コード | 意味 |
-|--------|------|
-| `0` | すべてパス（warn含む） |
-| `1` | error レベルの違反あり |
-| `2` | 実行エラー（設定不正など） |
+| Code | Meaning |
+|------|---------|
+| `0` | All passed (including warnings) |
+| `1` | Error-level violations found |
+| `2` | Runtime error (invalid config, etc.) |
 
-## 設定
+## Configuration
 
-`.linterly.yml` をプロジェクトルートに配置します。
+Place a `.linterly.yml` file in your project root.
 
 ```yaml
 rules:
-  max_lines_per_file: 300        # ファイル行数上限
-  max_lines_per_directory: 2000  # ディレクトリ行数上限
-  warning_threshold: 10          # 警告閾値 (%)
+  max_lines_per_file: 300        # Max lines per file
+  max_lines_per_directory: 2000  # Max lines per directory
+  warning_threshold: 10          # Warning threshold (%)
 
 count_mode: all                  # all | code_only
 language: en                     # en | ja
@@ -86,25 +88,25 @@ ignore:
   - "*.pb.go"
   - "**/*_generated.go"
 
-default_excludes: true           # デフォルト除外の有効/無効
+default_excludes: true           # Enable/disable default exclusions
 ```
 
-### 違反判定ロジック
+### Violation Logic
 
 ```
-上限 = max_lines（例: 300）
-閾値 = 上限 × (1 + warning_threshold / 100)（例: 330）
+limit     = max_lines (e.g. 300)
+threshold = limit × (1 + warning_threshold / 100) (e.g. 330)
 
-行数 ≤ 上限        → PASS
-上限 < 行数 ≤ 閾値 → WARN（終了コード 0）
-行数 > 閾値        → ERROR（終了コード 1）
+lines ≤ limit         → PASS
+limit < lines ≤ threshold → WARN (exit code 0)
+lines > threshold     → ERROR (exit code 1)
 ```
 
-### 除外ファイル
+### Exclude Files
 
-`.linterlyignore` を gitignore と同じ形式で記述できます。`.linterlyignore` の設定は設定ファイルの `ignore` より優先されます。
+Use `.linterlyignore` with the same format as `.gitignore`. If both `.linterlyignore` and the `ignore` field in the config file are defined, `.linterlyignore` takes precedence.
 
-## Git Hooks との連携
+## Git Hooks Integration
 
 ### Lefthook
 
@@ -128,7 +130,7 @@ pre-commit:
 }
 ```
 
-## CI での利用
+## CI Usage
 
 ### GitHub Actions
 
@@ -138,18 +140,18 @@ pre-commit:
     linterly check
 ```
 
-## ドキュメント
+## Documentation
 
-詳細な仕様は [`docs/`](./docs/) を参照してください。
+See [`docs/`](./docs/) for detailed specifications.
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [機能要件](./docs/requirements/functional.md) | ユースケース・違反ロジック・デフォルト除外 |
-| [非機能要件](./docs/requirements/non-functional.md) | パフォーマンス・プラットフォーム・配布 |
-| [アーキテクチャ](./docs/architecture/overview.md) | レイヤー構成・技術選定・パッケージ設計 |
-| [設定スキーマ](./docs/architecture/config-schema.md) | YAML仕様・バリデーション・ignore形式 |
-| [コンポーネント設計](./docs/components/overview.md) | 7コンポーネントの責務・インターフェース |
-| [CLI仕様](./docs/api/cli.md) | コマンド・フラグ・出力・終了コード |
+| Document | Contents |
+|----------|----------|
+| [Functional Requirements](./docs/requirements/functional.md) | Use cases, violation logic, default exclusions |
+| [Non-functional Requirements](./docs/requirements/non-functional.md) | Performance, platforms, distribution |
+| [Architecture](./docs/architecture/overview.md) | Layer structure, tech choices, package design |
+| [Config Schema](./docs/architecture/config-schema.md) | YAML spec, validation, ignore format |
+| [Component Design](./docs/components/overview.md) | Responsibilities and interfaces of 7 components |
+| [CLI Specification](./docs/api/cli.md) | Commands, flags, output, exit codes |
 
 ## License
 

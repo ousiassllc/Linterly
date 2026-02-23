@@ -16,7 +16,8 @@
     "linterly": "bin.js"
   },
   "files": [
-    "bin.js"
+    "bin.js",
+    "README.md"
   ],
   "engines": {
     "node": ">=18.0.0"
