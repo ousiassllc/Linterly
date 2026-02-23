@@ -32,7 +32,7 @@ fmt: ## コードをフォーマット
 	gofmt -w .
 
 clean: ## ビルド成果物を削除
-	rm -rf bin/ dist/
+	rm -rf bin/ build/
 
 release: ## GoReleaser でリリース（要 GITHUB_TOKEN）
 	$(GORELEASER) release --clean

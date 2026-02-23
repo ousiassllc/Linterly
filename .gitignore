@@ -2,6 +2,7 @@
 /linterly
 cmd/linterly/linterly
 bin/
+build/
 dist/*
 
 # npm package definitions (tracked)

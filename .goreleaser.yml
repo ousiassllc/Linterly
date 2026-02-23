@@ -1,6 +1,7 @@
 version: 2
 
 project_name: linterly
+dist: build
 
 builds:
   - main: ./cmd/linterly
