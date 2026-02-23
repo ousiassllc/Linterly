@@ -26,7 +26,7 @@ npm install -g @linterly/cli
 npm install -D @linterly/cli
 ```
 
-[GitHub Releases](https://github.com/ousiassllc/linterly/releases) からプラットフォーム別のバイナリも入手できます。
+[GitHub Releases](https://github.com/ousiassllc/linterly/releases) からプラットフォーム別のバイナリも入手できます。npm パッケージの詳細は [@linterly/cli](https://www.npmjs.com/package/@linterly/cli) を参照してください。
 
 ## 使い方
 
@@ -131,12 +131,6 @@ pre-commit:
 ## CI での利用
 
 ### GitHub Actions
-
-```yaml
-- uses: ousiassllc/linterly-action@v1
-```
-
-### 手動実行
 
 ```yaml
 - run: |
