@@ -182,21 +182,34 @@ func TestLoad_EnvVariable(t *testing.T) {
 	assert.Equal(t, "ja", cfg.Language)
 }
 
-func TestLoad_ConfigPathEmpty_NoConfigFound(t *testing.T) {
+func TestLoad_NoConfigFile_ReturnsDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
-
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
 	defer func() { _ = os.Chdir(origDir) }()
 	require.NoError(t, os.Chdir(tmpDir))
 
-	_, err = Load("")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "config file not found")
+	cfg, err := Load("")
+	require.NoError(t, err)
 
-	var cfgErr *ConfigError
-	require.True(t, errors.As(err, &cfgErr))
-	assert.Equal(t, "err.config_not_found", cfgErr.Code)
+	assert.Equal(t, 300, cfg.Rules.MaxLinesPerFile)
+	assert.Equal(t, 2000, cfg.Rules.MaxLinesPerDirectory)
+	assert.Equal(t, 10, cfg.Rules.WarningThreshold)
+	assert.Equal(t, "all", cfg.CountMode)
+	assert.Empty(t, cfg.Ignore)
+	assert.Equal(t, true, cfg.DefaultExcludes)
+	assert.Equal(t, "en", cfg.Language)
+}
+
+func TestLoad_ExplicitConfigPath_NotFound(t *testing.T) {
+	_, err := Load("/nonexistent/path/config.yml")
+	require.Error(t, err)
+}
+
+func TestLoad_EnvVariable_NotFound(t *testing.T) {
+	t.Setenv("LINTERLY_CONFIG", "/nonexistent/path.yml")
+	_, err := Load("")
+	require.Error(t, err)
 }
 
 func TestLoad_WarningThresholdZeroIsValid(t *testing.T) {
@@ -236,6 +249,126 @@ func TestDefaultConfigTemplate(t *testing.T) {
 	assert.Contains(t, DefaultConfigTemplate, "count_mode: all")
 	assert.Contains(t, DefaultConfigTemplate, "# default_excludes: true")
 	assert.Contains(t, DefaultConfigTemplate, "# language: en")
+}
+
+func TestApplyOverrides_AllFields(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Ignore = []string{"old/**"}
+
+	maxFile := 500
+	maxDir := 3000
+	threshold := 20
+	mode := CountModeCodeOnly
+	o := &Overrides{
+		MaxLinesPerFile:      &maxFile,
+		MaxLinesPerDirectory: &maxDir,
+		WarningThreshold:     &threshold,
+		CountMode:            &mode,
+		Ignore:               []string{"vendor/**", "*.pb.go"},
+		NoDefaultExcludes:    true,
+	}
+
+	err := cfg.ApplyOverrides(o)
+	require.NoError(t, err)
+
+	assert.Equal(t, 500, cfg.Rules.MaxLinesPerFile)
+	assert.Equal(t, 3000, cfg.Rules.MaxLinesPerDirectory)
+	assert.Equal(t, 20, cfg.Rules.WarningThreshold)
+	assert.Equal(t, "code_only", cfg.CountMode)
+	assert.Equal(t, []string{"vendor/**", "*.pb.go"}, cfg.Ignore)
+	assert.Equal(t, false, cfg.DefaultExcludes)
+}
+
+func TestApplyOverrides_PartialFields(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Ignore = []string{"old/**"}
+
+	maxFile := 500
+	o := &Overrides{
+		MaxLinesPerFile: &maxFile,
+	}
+
+	err := cfg.ApplyOverrides(o)
+	require.NoError(t, err)
+
+	assert.Equal(t, 500, cfg.Rules.MaxLinesPerFile)
+	assert.Equal(t, 2000, cfg.Rules.MaxLinesPerDirectory)
+	assert.Equal(t, 10, cfg.Rules.WarningThreshold)
+	assert.Equal(t, "all", cfg.CountMode)
+	assert.Equal(t, []string{"old/**"}, cfg.Ignore)
+	assert.Equal(t, true, cfg.DefaultExcludes)
+}
+
+func TestApplyOverrides_NilOverrides(t *testing.T) {
+	cfg := defaultConfig()
+	err := cfg.ApplyOverrides(nil)
+	require.NoError(t, err)
+	assert.Equal(t, 300, cfg.Rules.MaxLinesPerFile)
+}
+
+func TestApplyOverrides_ValidationError(t *testing.T) {
+	cfg := defaultConfig()
+	badValue := -1
+	o := &Overrides{
+		MaxLinesPerFile: &badValue,
+	}
+
+	err := cfg.ApplyOverrides(o)
+	require.Error(t, err)
+
+	var valErrs *ValidationErrors
+	require.True(t, errors.As(err, &valErrs))
+	assert.Contains(t, codeList(valErrs), "validation.max_lines_per_file")
+}
+
+func TestApplyOverrides_NoDefaultExcludes(t *testing.T) {
+	cfg := defaultConfig()
+	o := &Overrides{NoDefaultExcludes: true}
+
+	err := cfg.ApplyOverrides(o)
+	require.NoError(t, err)
+	assert.Equal(t, false, cfg.DefaultExcludes)
+}
+
+func TestApplyOverrides_NoDefaultExcludes_False(t *testing.T) {
+	cfg := defaultConfig()
+	o := &Overrides{NoDefaultExcludes: false}
+
+	err := cfg.ApplyOverrides(o)
+	require.NoError(t, err)
+	assert.Equal(t, true, cfg.DefaultExcludes)
+}
+
+func TestApplyOverrides_MultipleValidationErrors(t *testing.T) {
+	cfg := defaultConfig()
+	badFile := -1
+	badMode := "invalid"
+	o := &Overrides{
+		MaxLinesPerFile: &badFile,
+		CountMode:       &badMode,
+	}
+
+	err := cfg.ApplyOverrides(o)
+	require.Error(t, err)
+
+	var valErrs *ValidationErrors
+	require.True(t, errors.As(err, &valErrs))
+	assert.Len(t, valErrs.Errors, 2)
+	codes := codeList(valErrs)
+	assert.Contains(t, codes, "validation.max_lines_per_file")
+	assert.Contains(t, codes, "validation.count_mode")
+}
+
+func TestApplyOverrides_IgnoreOverride(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Ignore = []string{"original/**"}
+
+	o := &Overrides{Ignore: []string{}}
+
+	err := cfg.ApplyOverrides(o)
+	require.NoError(t, err)
+	assert.Empty(t, cfg.Ignore)
+	assert.NotNil(t, cfg.Ignore)
 }
 
 // codeList は ValidationErrors から Code の一覧を返すヘルパー。

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -69,17 +70,81 @@ type Rules struct {
 	WarningThreshold     int `yaml:"warning_threshold" mapstructure:"warning_threshold"`
 }
 
+// Overrides は CLI フラグによる設定上書きを表す。
+// nil のフィールドは「未指定」を意味し、上書きしない。
+type Overrides struct {
+	MaxLinesPerFile      *int
+	MaxLinesPerDirectory *int
+	WarningThreshold     *int
+	CountMode            *string
+	Ignore               []string // nil=未指定, non-nil=上書き
+	NoDefaultExcludes    bool     // true の場合 DefaultExcludes を false にする
+}
+
+// ApplyOverrides は Overrides の非 nil フィールドで Config を上書きし、
+// 最終的な Config をバリデーションする。
+func (c *Config) ApplyOverrides(o *Overrides) error {
+	if o == nil {
+		return validate(c)
+	}
+	if o.MaxLinesPerFile != nil {
+		c.Rules.MaxLinesPerFile = *o.MaxLinesPerFile
+	}
+	if o.MaxLinesPerDirectory != nil {
+		c.Rules.MaxLinesPerDirectory = *o.MaxLinesPerDirectory
+	}
+	if o.WarningThreshold != nil {
+		c.Rules.WarningThreshold = *o.WarningThreshold
+	}
+	if o.CountMode != nil {
+		c.CountMode = *o.CountMode
+	}
+	if o.Ignore != nil {
+		c.Ignore = o.Ignore
+	}
+	if o.NoDefaultExcludes {
+		c.DefaultExcludes = false
+	}
+	return validate(c)
+}
+
+// defaultConfig は設定ファイルなしで動作する際のデフォルト Config を返す。
+func defaultConfig() *Config {
+	return &Config{
+		Rules: Rules{
+			MaxLinesPerFile:      300,
+			MaxLinesPerDirectory: 2000,
+			WarningThreshold:     10,
+		},
+		CountMode:       CountModeAll,
+		Ignore:          []string{},
+		DefaultExcludes: true,
+		Language:        "en",
+	}
+}
+
 // Load は設定ファイルを読み込み、バリデーション済みの Config を返す。
 // configPath が空でない場合はそのパスのみを読み込む。
 // 空の場合は探索順序に従って設定ファイルを探す。
 func Load(configPath string) (*Config, error) {
 	v := viper.New()
 
-	if err := findAndReadConfig(v, configPath); err != nil {
+	explicit, err := findAndReadConfig(v, configPath)
+	if err != nil {
+		// 明示指定のパスが見つからない場合はエラー
+		if explicit {
+			return nil, err
+		}
+		// 自動探索で見つからない場合はデフォルト Config を返す
+		var cfgErr *ConfigError
+		if errors.As(err, &cfgErr) && cfgErr.Code == "err.config_not_found" {
+			return defaultConfig(), nil
+		}
 		return nil, err
 	}
 
-	// rules セクションの存在チェック（デフォルト値設定前に行う）
+	// --- 設定ファイルが見つかった場合の既存ロジック ---
+	// rules セクションの存在チェック
 	if !v.IsSet("rules") {
 		return nil, &ConfigError{
 			Code:    "validation.rules_required",
@@ -87,7 +152,7 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 
-	// デフォルト値の設定（rules 存在チェック後に行う）
+	// デフォルト値の設定
 	v.SetDefault("rules.max_lines_per_file", 300)
 	v.SetDefault("rules.max_lines_per_directory", 2000)
 	v.SetDefault("rules.warning_threshold", 10)
@@ -113,27 +178,28 @@ func Load(configPath string) (*Config, error) {
 }
 
 // findAndReadConfig は探索順序に従って設定ファイルを見つけて読み込む。
-func findAndReadConfig(v *viper.Viper, configPath string) error {
+// explicit は、ユーザーが明示的にパスを指定したかどうかを示す。
+func findAndReadConfig(v *viper.Viper, configPath string) (explicit bool, err error) {
 	if configPath != "" {
 		v.SetConfigFile(configPath)
-		return v.ReadInConfig()
+		return true, v.ReadInConfig()
 	}
 
 	// LINTERLY_CONFIG 環境変数
 	if envPath := os.Getenv("LINTERLY_CONFIG"); envPath != "" {
 		v.SetConfigFile(envPath)
-		return v.ReadInConfig()
+		return true, v.ReadInConfig()
 	}
 
 	// カレントディレクトリの .linterly.yml / .linterly.yaml
 	for _, name := range []string{".linterly.yml", ".linterly.yaml"} {
 		if _, err := os.Stat(name); err == nil {
 			v.SetConfigFile(name)
-			return v.ReadInConfig()
+			return false, v.ReadInConfig()
 		}
 	}
 
-	return &ConfigError{
+	return false, &ConfigError{
 		Code:    "err.config_not_found",
 		Message: "config file not found",
 	}
