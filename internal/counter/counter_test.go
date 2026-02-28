@@ -111,26 +111,55 @@ func TestCountFile_NoTrailingNewline(t *testing.T) {
 	assert.Equal(t, 2, lc.TotalLines)
 }
 
+func TestCountFile_LargeLine_AllMode(t *testing.T) {
+	// bufio.MaxScanTokenSize(64KB) を超えるが maxScanBufSize(1MB) 以内の行は正常にカウントできる
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "large_line.txt")
+
+	// 64KB+1 の行 + 改行 + 通常行 = 2行
+	data := append(bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1), []byte("\nhello\n")...)
+	require.NoError(t, os.WriteFile(path, data, 0644))
+
+	lc, err := CountFile(path, config.CountModeAll)
+	require.NoError(t, err)
+	assert.Equal(t, 2, lc.TotalLines)
+}
+
+func TestCountFile_LargeLine_CodeOnlyMode(t *testing.T) {
+	// bufio.MaxScanTokenSize(64KB) を超えるが maxScanBufSize(1MB) 以内の行は正常にカウントできる
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "large_line.go")
+
+	data := append(bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1), []byte("\npackage main\n")...)
+	require.NoError(t, os.WriteFile(path, data, 0644))
+
+	lc, err := CountFile(path, config.CountModeCodeOnly)
+	require.NoError(t, err)
+	assert.Equal(t, 2, lc.TotalLines)
+}
+
 func TestCountFile_ScannerError_AllMode(t *testing.T) {
-	// bufio.MaxScanTokenSize を超える改行なしデータで scanner.Err() がエラーを返すことを確認
+	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "huge_line.txt")
 
-	data := bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1)
+	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
 	_, err := CountFile(path, config.CountModeAll)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), path)
 }
 
 func TestCountFile_ScannerError_CodeOnlyMode(t *testing.T) {
-	// bufio.MaxScanTokenSize を超える改行なしデータで scanner.Err() がエラーを返すことを確認
+	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "huge_line.go")
 
-	data := bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1)
+	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
 	_, err := CountFile(path, config.CountModeCodeOnly)
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), path)
 }
