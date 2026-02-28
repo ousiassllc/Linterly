@@ -32,9 +32,23 @@ npx linterly check src/
 
 # Output in JSON format
 npx linterly check --format json
+
+# Override config values with CLI flags
+npx linterly check --max-lines-per-file 500 --count-mode code_only
+
+# Run without a config file (uses defaults)
+npx linterly check --max-lines-per-file 500 --warning-threshold 20
+
+# Add ignore patterns via CLI
+npx linterly check --ignore "vendor/**" --ignore "*.pb.go"
+
+# Disable default excludes
+npx linterly check --no-default-excludes
 ```
 
 ## Configuration
+
+A config file is **optional**. Without one, Linterly runs with sensible defaults. You can override any setting via CLI flags.
 
 Place a `.linterly.yml` in your project root:
 
@@ -53,6 +67,8 @@ ignore:
 
 default_excludes: true
 ```
+
+CLI flags always take precedence over config file values (`CLI flags > config file > defaults`).
 
 You can also create a `.linterlyignore` file (gitignore format) for exclusion patterns.
 

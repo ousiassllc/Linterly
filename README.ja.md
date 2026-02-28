@@ -42,6 +42,18 @@ linterly check src/
 # JSON形式で出力
 linterly check --format json
 
+# CLIフラグで設定値を上書き
+linterly check --max-lines-per-file 500 --count-mode code_only
+
+# 設定ファイルなしで実行（デフォルト値を使用）
+linterly check --max-lines-per-file 500 --warning-threshold 20
+
+# 除外パターンをCLIで指定
+linterly check --ignore "vendor/**" --ignore "*.pb.go"
+
+# デフォルト除外を無効化
+linterly check --no-default-excludes
+
 # 設定ファイルを指定
 linterly check --config .linterly.yml
 

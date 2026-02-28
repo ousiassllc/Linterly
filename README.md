@@ -42,6 +42,18 @@ linterly check src/
 # Output in JSON format
 linterly check --format json
 
+# Override config values with CLI flags
+linterly check --max-lines-per-file 500 --count-mode code_only
+
+# Run without a config file (uses defaults)
+linterly check --max-lines-per-file 500 --warning-threshold 20
+
+# Add ignore patterns via CLI
+linterly check --ignore "vendor/**" --ignore "*.pb.go"
+
+# Disable default excludes
+linterly check --no-default-excludes
+
 # Specify a config file
 linterly check --config .linterly.yml
 
