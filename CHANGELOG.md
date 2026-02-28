@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.3.0] - 2026-02-28
+
+CLI フラグによる設定値の上書きと設定ファイルなしでの実行に対応。
+Add config override via CLI flags and support running without a config file.
+
+### ✨ 新機能 / New Features
+- check コマンドに設定上書きフラグ 6 種を追加（--max-lines-per-file, --max-lines-per-func, --count-mode, --threshold, --exclude, --include） / Add 6 config override flags to check command (#22)
+- Overrides 型と ApplyOverrides メソッドを追加し、設定ファイルなしでの実行に対応 / Add Overrides type and ApplyOverrides method to support running without config file (#22)
+
+### 🐛 バグ修正 / Bug Fixes
+- スキャナーバッファを 1MB に拡張し、エラーメッセージにファイルパスを付与 / Expand scanner buffer to 1MB and include file path in error messages (#24)
+
+### 🔧 改善 / Improvements
+- テストファイルを 300 行以内に分割し、.linterlyignore に除外パターンを追加 / Split test files under 300 lines and add ignore patterns (#25)
+- lefthook の pre-commit/pre-push フック構成を整理 / Reorganize lefthook pre-commit/pre-push hook configuration
+
+### 📝 ドキュメント / Documentation
+- CLI フラグによる設定値上書きと設定ファイルなし実行の仕様を追加 / Add spec for CLI flag overrides and config-free execution (#22)
+
 ## [v0.1.0] - 2026-02-08
 
 初回リリース。コード行数チェック CLI ツール「Linterly」の基本機能を実装。
