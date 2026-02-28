@@ -24,6 +24,33 @@ Add config override via CLI flags and support running without a config file.
 ### 📝 ドキュメント / Documentation
 - CLI フラグによる設定値上書きと設定ファイルなし実行の仕様を追加 / Add spec for CLI flag overrides and config-free execution (#22)
 
+## [v0.2.2] - 2026-02-23
+
+### 📝 ドキュメント / Documentation
+- README を英語化し日本語版を README.ja.md に分離 / Split README into English (README.md) and Japanese (README.ja.md)
+- npm パッケージリンクを追加し未実装の Action 参照を削除 / Add npm package links and remove unimplemented Action references
+
+## [v0.2.0] - 2026-02-23
+
+GoReleaser による自動リリースと npm パッケージ配布に対応。
+Add automated releases via GoReleaser and npm package distribution.
+
+### ✨ 新機能 / New Features
+- GoReleaser を導入しクロスコンパイル・リリースを自動化 / Introduce GoReleaser for cross-compilation and automated releases
+- npm パッケージ配布用の構成を追加 / Add npm package distribution setup
+- リリースワークフローを追加し GoReleaser 設定を調整 / Add release workflow and adjust GoReleaser config
+
+### 🐛 バグ修正 / Bug Fixes
+- GoReleaser の出力先を build/ に変更し dist/npm/ との競合を解消 / Change GoReleaser output to build/ to avoid conflict with dist/npm/
+- Makefile の goreleaser パス解決と release-check ターゲット追加 / Fix goreleaser path resolution in Makefile and add release-check target
+
+### 🔧 改善 / Improvements
+- Go バージョンを 1.25.6 から 1.26 に更新 / Update Go version from 1.25.6 to 1.26
+
+### 📝 ドキュメント / Documentation
+- インストール手順の修正と Git Hooks 連携セクションを追加 / Fix install instructions and add Git Hooks integration section
+- release ターゲットに GITHUB_TOKEN が必要な旨を明記 / Document GITHUB_TOKEN requirement for release target
+
 ## [v0.1.0] - 2026-02-08
 
 初回リリース。コード行数チェック CLI ツール「Linterly」の基本機能を実装。
