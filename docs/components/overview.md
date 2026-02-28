@@ -38,20 +38,37 @@ graph TD
 | ファイル | 責務 |
 |---------|------|
 | `root.go` | ルートコマンド定義。引数なしでヘルプを表示 |
-| `check.go` | check サブコマンド。チェックフローの実行を統括 |
+| `check.go` | check サブコマンド。CLI フラグの定義、チェックフローの実行を統括 |
 | `init.go` | init サブコマンド。設定ファイルの生成 |
 | `version.go` | バージョン情報表示 |
+
+#### CLI フラグ（check コマンド）
+
+```go
+// 既存フラグ
+var configFile string  // --config
+var format string      // --format
+
+// 設定上書きフラグ
+var maxLinesPerFile int       // --max-lines-per-file
+var maxLinesPerDirectory int  // --max-lines-per-directory
+var warningThreshold int      // --warning-threshold
+var countMode string          // --count-mode
+var ignore []string           // --ignore（複数回指定可能）
+var noDefaultExcludes bool    // --no-default-excludes
+```
 
 #### 主要インターフェース
 
 ```go
 // check コマンドの実行フロー（check.go 内）
 func runCheck(cmd *cobra.Command, args []string) error {
-    // 1. config.Load() で設定読み込み
-    // 2. scanner.Scan() でファイル一覧取得
-    // 3. analyzer.Analyze() でルール評価
-    // 4. reporter.Report() で結果出力
-    // 5. 終了コードを返す
+    // 1. config.Load() で設定読み込み（設定ファイルなしでもデフォルト値で動作）
+    // 2. config.ApplyOverrides() で CLI フラグの値を上書き＋バリデーション
+    // 3. scanner.Scan() でファイル一覧取得
+    // 4. analyzer.Analyze() でルール評価
+    // 5. reporter.Report() で結果出力
+    // 6. 終了コードを返す
 }
 ```
 
@@ -89,8 +106,25 @@ type Rules struct {
     WarningThreshold     int `yaml:"warning_threshold"`
 }
 
-// Load は設定ファイルを読み込み、バリデーション済みの Config を返す
+// Overrides は CLI フラグによる設定上書き値を保持する。
+// nil のフィールドは「未指定」を意味し、上書きしない。
+type Overrides struct {
+    MaxLinesPerFile      *int
+    MaxLinesPerDirectory *int
+    WarningThreshold     *int
+    CountMode            *string
+    Ignore               []string // nil=未指定、空スライス=空リストで上書き
+    NoDefaultExcludes    bool     // true の場合 DefaultExcludes を false に設定
+}
+
+// Load は設定ファイルを読み込み、デフォルト値がマージされた Config を返す。
+// configPath が空で設定ファイルが見つからない場合は全デフォルト値の Config を返す。
+// この時点ではバリデーションは行わない。
 func Load(configPath string) (*Config, error)
+
+// ApplyOverrides は CLI フラグの値で Config を上書きし、最終的なバリデーションを行う。
+// 不正な値が渡された場合は error を返す。
+func (c *Config) ApplyOverrides(o *Overrides) error
 
 // IgnorePatterns は有効な除外パターン一覧を返す
 // .linterlyignore が存在すればそちらを優先し、重複時は warn を返す
@@ -355,7 +389,11 @@ sequenceDiagram
     participant Rpt as reporter
 
     CLI->>Cfg: Load(configPath)
-    Cfg-->>CLI: Config, warnings
+    Cfg-->>CLI: Config（設定ファイルなしの場合は全デフォルト値）
+    CLI->>Cfg: Config.ApplyOverrides(Overrides)
+    Note over CLI,Cfg: CLI フラグで設定値を上書き
+    CLI->>Cfg: Config.IgnorePatterns()
+    Cfg-->>CLI: patterns, warnings
     CLI->>Scn: Scan(targetPath, Config)
     Scn-->>CLI: ScanResult
     CLI->>Cnt: CountFiles(filePaths, countMode)
@@ -374,3 +412,4 @@ sequenceDiagram
 | 1.1 | 2026-02-08 | cli コンポーネントに version.go を追加、依存関係図に CLI -> Counter を追加 | アーキテクチャ設計・CLI 仕様との整合性確保 |
 | 1.2 | 2026-02-08 | Config -> I18n の依存理由を明記 | 整合性チェックによる改善 |
 | 1.3 | 2026-02-08 | CountFiles のシグネチャを実装に合わせて修正、NewReporter のシグネチャを更新、Config の i18n 依存を CLI 経由に変更、ResolveLanguage を追加 | ドキュメント乖離レポート (#3) 対応 |
+| 1.4 | 2026-02-24 | cli: 設定上書きフラグを追加、config: Overrides 型と ApplyOverrides メソッドを追加、Load の設定ファイルなし動作を更新、シーケンス図に ApplyOverrides ステップを追加 | #22 CLI フラグによる設定値の上書き対応 |
