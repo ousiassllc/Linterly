@@ -21,6 +21,14 @@ var (
 	configFile string
 	// format は --format フラグの値を保持する。
 	format string
+
+	// 設定上書きフラグ
+	flagMaxLinesPerFile      int
+	flagMaxLinesPerDirectory int
+	flagWarningThreshold     int
+	flagCountMode            string
+	flagIgnore               []string
+	flagNoDefaultExcludes    bool
 )
 
 var checkCmd = &cobra.Command{
@@ -34,6 +42,14 @@ var checkCmd = &cobra.Command{
 func init() {
 	checkCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file (default is .linterly.yml)")
 	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text or json)")
+
+	// 設定上書きフラグ
+	checkCmd.Flags().IntVar(&flagMaxLinesPerFile, "max-lines-per-file", 300, "max lines per file")
+	checkCmd.Flags().IntVar(&flagMaxLinesPerDirectory, "max-lines-per-directory", 2000, "max lines per directory")
+	checkCmd.Flags().IntVar(&flagWarningThreshold, "warning-threshold", 10, "warning threshold (%)")
+	checkCmd.Flags().StringVar(&flagCountMode, "count-mode", "all", "count mode (all or code_only)")
+	checkCmd.Flags().StringArrayVar(&flagIgnore, "ignore", nil, "ignore pattern (can be specified multiple times)")
+	checkCmd.Flags().BoolVar(&flagNoDefaultExcludes, "no-default-excludes", false, "disable default excludes")
 }
 
 func runCheck(cmd *cobra.Command, args []string) error {
@@ -61,6 +77,12 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return NewRuntimeError("failed to initialize i18n: %v", err)
 		}
+	}
+
+	// CLI フラグによる設定上書き
+	overrides := buildOverrides(cmd)
+	if err := cfg.ApplyOverrides(overrides); err != nil {
+		return NewRuntimeError("%s", translateConfigError(translator, err))
 	}
 
 	// ignore パターンの取得と警告
@@ -112,6 +134,34 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// buildOverrides は cmd のフラグから Overrides を構築する。
+// Changed() == true のフラグのみセットし、未指定のフラグは nil（上書きしない）。
+func buildOverrides(cmd *cobra.Command) *config.Overrides {
+	o := &config.Overrides{}
+	flags := cmd.Flags()
+
+	if flags.Changed("max-lines-per-file") {
+		o.MaxLinesPerFile = &flagMaxLinesPerFile
+	}
+	if flags.Changed("max-lines-per-directory") {
+		o.MaxLinesPerDirectory = &flagMaxLinesPerDirectory
+	}
+	if flags.Changed("warning-threshold") {
+		o.WarningThreshold = &flagWarningThreshold
+	}
+	if flags.Changed("count-mode") {
+		o.CountMode = &flagCountMode
+	}
+	if flags.Changed("ignore") {
+		o.Ignore = flagIgnore
+	}
+	if flags.Changed("no-default-excludes") {
+		o.NoDefaultExcludes = flagNoDefaultExcludes
+	}
+
+	return o
 }
 
 // initTranslator は langFlag から言語を解決し、Translator を初期化する。

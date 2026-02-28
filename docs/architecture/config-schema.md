@@ -77,7 +77,7 @@ language: en                     # en | ja（デフォルト: en）
 
 ### 1.3 最小構成
 
-`rules` セクションは必須だが、各フィールドはすべて省略可能（デフォルト値が適用される）。以下は明示的に値を指定した例:
+設定ファイルを使用する場合、`rules` セクションは必須だが、各フィールドはすべて省略可能（デフォルト値が適用される）。以下は明示的に値を指定した例:
 
 ```yaml
 rules:
@@ -95,16 +95,31 @@ rules:
 | `default_excludes` | `true` |
 | `language` | `en` |
 
-### 1.4 バリデーションルール
+### 1.4 設定ファイルなしでの動作
+
+設定ファイルが見つからない場合（かつ `--config` で明示指定されていない場合）、エラーにせず全デフォルト値で動作する。
+
+```bash
+# 設定ファイルなしでも動作する
+$ linterly check
+$ linterly check --max-lines-per-file 500
+```
+
+`--config` または `LINTERLY_CONFIG` で明示的にパスを指定した場合、そのファイルが存在しなければ従来通りエラーとなる。
+
+### 1.5 バリデーションルール
+
+バリデーションは設定ファイルの値と CLI フラグの値がマージされた最終的な設定に対して行われる。
 
 | ルール | エラーメッセージ（en） |
 |--------|---------------------|
-| `rules` が未定義 | `"rules" section is required` |
 | `max_lines_per_file` が 0 以下 | `"max_lines_per_file" must be a positive integer` |
 | `max_lines_per_directory` が 0 以下 | `"max_lines_per_directory" must be a positive integer` |
 | `warning_threshold` が 0〜100 の範囲外 | `"warning_threshold" must be between 0 and 100` |
 | `count_mode` が不正な値 | `"count_mode" must be "all" or "code_only"` |
 | `language` が不正な値 | `"language" must be "en" or "ja"` |
+
+> **注記**: 設定ファイルなしで動作する場合、`rules` セクション未定義のバリデーションは適用されない（全デフォルト値が使用されるため）。設定ファイルが存在する場合のみ `rules` セクションは必須。
 
 ## 2. ignore ファイル（`.linterlyignore`）
 
@@ -149,7 +164,9 @@ graph TD
     G -->|NO| I["設定ファイルの `ignore` パターンを適用"]
 ```
 
-## 3. 設定ファイルの探索順序
+## 3. 設定の解決フロー
+
+### 3.1 設定ファイルの探索順序
 
 以下の優先順序で設定ファイルを探索する：
 
@@ -158,9 +175,53 @@ graph TD
 3. カレントディレクトリの `.linterly.yml`
 4. カレントディレクトリの `.linterly.yaml`
 
-見つからない場合は error を出力して終了コード 2 で終了する（例: `Error: Config file not found. Run 'linterly init' to create one.`）。
+- `--config` または `LINTERLY_CONFIG` で指定されたファイルが存在しない場合はエラー（終了コード 2）
+- 上記のいずれも指定されず、自動探索でも見つからない場合は**全デフォルト値で動作する**（エラーにならない）
 
 `.linterlyignore` は常にカレントディレクトリから探索する。`--config` でパスを指定した場合でも、`.linterlyignore` はカレントディレクトリが基準となる。
+
+### 3.2 CLI フラグによる上書き
+
+CLI フラグで指定された値は、設定ファイルの値を上書きする。
+
+```
+CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
+```
+
+| CLI フラグ | 対応する設定ファイルフィールド | デフォルト値 |
+|-----------|--------------------------|------------|
+| `--max-lines-per-file` | `rules.max_lines_per_file` | `300` |
+| `--max-lines-per-directory` | `rules.max_lines_per_directory` | `2000` |
+| `--warning-threshold` | `rules.warning_threshold` | `10` |
+| `--count-mode` | `count_mode` | `all` |
+| `--ignore` | `ignore` | `[]` |
+| `--no-default-excludes` | `default_excludes: false` | `true` |
+| `--lang` | `language` | `en` |
+
+#### 上書きルール
+
+- 数値・文字列フラグ: 指定された場合、設定ファイルの値を完全に置き換える
+- `--ignore`: 1回以上指定された場合、設定ファイルの `ignore` を完全に置き換える（マージではない）
+- `--no-default-excludes`: 指定された場合、`default_excludes` を `false` に設定する
+
+### 3.3 設定解決フロー図
+
+```mermaid
+graph TD
+    A["check コマンド実行"] --> B{"--config or LINTERLY_CONFIG\nが指定されている？"}
+    B -->|YES| C["指定されたファイルを読み込む"]
+    C --> D{"ファイルが存在する？"}
+    D -->|NO| E["エラー（終了コード 2）"]
+    D -->|YES| F["設定ファイルの値を読み込む"]
+    B -->|NO| G[".linterly.yml / .yaml を探索"]
+    G --> H{"見つかった？"}
+    H -->|YES| F
+    H -->|NO| I["全デフォルト値を使用"]
+    F --> J["CLI フラグで上書き"]
+    I --> J
+    J --> K["バリデーション"]
+    K --> L["チェック実行"]
+```
 
 ## 4. `linterly init` で生成されるデフォルト設定
 
@@ -187,3 +248,4 @@ count_mode: all
 | 1.1 | 2026-02-08 | バリデーション記述の明確化、最小構成の注記追加、探索順序に LINTERLY_CONFIG を追加 | CLI 仕様との整合性確保、記述の正確性向上 |
 | 1.2 | 2026-02-08 | `max_lines_per_file` のデフォルト値を 400 → 300 に変更 | デフォルト値の見直し |
 | 1.3 | 2026-02-08 | 設定ファイル未発見時のエラーメッセージ例を追加 | ドキュメント乖離レポート (#3) 対応 |
+| 1.4 | 2026-02-24 | 設定ファイルなし動作の追加、CLI フラグによる上書きセクション追加、設定解決フロー図追加、バリデーションルールの rules 必須条件を条件付きに変更 | #22 CLI フラグによる設定値の上書き対応 |

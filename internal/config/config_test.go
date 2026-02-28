@@ -182,21 +182,34 @@ func TestLoad_EnvVariable(t *testing.T) {
 	assert.Equal(t, "ja", cfg.Language)
 }
 
-func TestLoad_ConfigPathEmpty_NoConfigFound(t *testing.T) {
+func TestLoad_NoConfigFile_ReturnsDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
-
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
 	defer func() { _ = os.Chdir(origDir) }()
 	require.NoError(t, os.Chdir(tmpDir))
 
-	_, err = Load("")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "config file not found")
+	cfg, err := Load("")
+	require.NoError(t, err)
 
-	var cfgErr *ConfigError
-	require.True(t, errors.As(err, &cfgErr))
-	assert.Equal(t, "err.config_not_found", cfgErr.Code)
+	assert.Equal(t, 300, cfg.Rules.MaxLinesPerFile)
+	assert.Equal(t, 2000, cfg.Rules.MaxLinesPerDirectory)
+	assert.Equal(t, 10, cfg.Rules.WarningThreshold)
+	assert.Equal(t, "all", cfg.CountMode)
+	assert.Empty(t, cfg.Ignore)
+	assert.Equal(t, true, cfg.DefaultExcludes)
+	assert.Equal(t, "en", cfg.Language)
+}
+
+func TestLoad_ExplicitConfigPath_NotFound(t *testing.T) {
+	_, err := Load("/nonexistent/path/config.yml")
+	require.Error(t, err)
+}
+
+func TestLoad_EnvVariable_NotFound(t *testing.T) {
+	t.Setenv("LINTERLY_CONFIG", "/nonexistent/path.yml")
+	_, err := Load("")
+	require.Error(t, err)
 }
 
 func TestLoad_WarningThresholdZeroIsValid(t *testing.T) {

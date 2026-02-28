@@ -80,6 +80,56 @@ linterly check [path] [flags]
 | `--config` | `-c` | `.linterly.yml` | 設定ファイルのパス |
 | `--format` | `-f` | `text` | 出力形式（`text` / `json`） |
 | `--lang` | | | メッセージの言語（`en` / `ja`）。設定ファイルの `language` より優先 |
+| `--max-lines-per-file` | | `300` | 1ファイルあたりの最大行数。設定ファイルの `rules.max_lines_per_file` を上書き |
+| `--max-lines-per-directory` | | `2000` | ディレクトリ直下ファイルの合計最大行数。設定ファイルの `rules.max_lines_per_directory` を上書き |
+| `--warning-threshold` | | `10` | 警告閾値（%）。設定ファイルの `rules.warning_threshold` を上書き |
+| `--count-mode` | | `all` | 行数カウントモード（`all` / `code_only`）。設定ファイルの `count_mode` を上書き |
+| `--ignore` | | | 除外パターン（複数回指定可能）。設定ファイルの `ignore` を上書き |
+| `--no-default-excludes` | | | デフォルト除外リストを無効化する。設定ファイルの `default_excludes: false` と同等 |
+
+#### 設定の優先順位
+
+CLI フラグで指定された値は、設定ファイルの値より常に優先される。
+
+```
+CLI フラグ > 設定ファイル > デフォルト値
+```
+
+- `--lang` フラグは `LINTERLY_LANG` 環境変数より優先される（既存動作）
+- `--ignore` が1回以上指定された場合、設定ファイルの `ignore` は完全に置き換えられる（マージではない）
+- `--no-default-excludes` は `--default-excludes=false` とは異なり、否定フラグとして機能する
+
+#### 設定ファイルなしでの実行
+
+設定ファイルが見つからない場合でも、エラーにせず全デフォルト値で動作する。CLI フラグの指定は不要。
+
+```bash
+# 設定ファイルなし・フラグなしでも動作（全デフォルト値で実行）
+$ linterly check
+
+# 設定ファイルなし・フラグで上書き
+$ linterly check --max-lines-per-file 500 --count-mode code_only
+```
+
+`--config` または `LINTERLY_CONFIG` で明示的にパスを指定した場合、そのファイルが存在しなければ従来通りエラーになる。
+
+#### CI / GitHub Actions での使用例
+
+```bash
+# 設定ファイルなしで CLI フラグのみで実行
+linterly check \
+  --max-lines-per-file 500 \
+  --max-lines-per-directory 3000 \
+  --warning-threshold 20 \
+  --count-mode code_only \
+  --format json
+
+# 設定ファイルの値を一部だけ上書き
+linterly check --max-lines-per-file 500
+
+# 除外パターンを CLI で指定
+linterly check --ignore vendor/ --ignore generated/ --ignore '*.pb.go'
+```
 
 #### テキスト出力例
 
@@ -220,6 +270,26 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 - `--lang` フラグが指定された場合は `LINTERLY_LANG` より優先される
 - 言語の優先順位: `--lang` フラグ > `LINTERLY_LANG` 環境変数 > 設定ファイルの `language` > デフォルト `en`
 
+## 5. 設定の優先順位（全体）
+
+```
+CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
+```
+
+各設定項目の優先順位:
+
+| 設定項目 | CLI フラグ | 環境変数 | 設定ファイル | デフォルト |
+|---------|-----------|----------|------------|-----------|
+| 設定ファイルパス | `--config` | `LINTERLY_CONFIG` | — | `.linterly.yml` 探索 |
+| 言語 | `--lang` | `LINTERLY_LANG` | `language` | `en` |
+| 最大行数/ファイル | `--max-lines-per-file` | — | `rules.max_lines_per_file` | `300` |
+| 最大行数/ディレクトリ | `--max-lines-per-directory` | — | `rules.max_lines_per_directory` | `2000` |
+| 警告閾値 | `--warning-threshold` | — | `rules.warning_threshold` | `10` |
+| カウントモード | `--count-mode` | — | `count_mode` | `all` |
+| 除外パターン | `--ignore` | — | `ignore` | `[]` |
+| デフォルト除外 | `--no-default-excludes` | — | `default_excludes` | `true` |
+| カラー無効化 | — | `NO_COLOR` | — | 未設定（カラー有効） |
+
 ## 改訂履歴
 
 | 版 | 日付 | 変更内容 | 変更理由 |
@@ -227,3 +297,4 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 | 1.0 | 2026-02-08 | 初版作成 | — |
 | 1.1 | 2026-02-08 | テキスト出力例のエラー件数を 2 に修正 | JSON 出力例・出力例の ERROR 件数との整合性確保 |
 | 1.2 | 2026-02-08 | warning(s) 表記修正、ignore 重複警告を 1 行表記に修正、version 出力例更新、--lang フラグと LINTERLY_LANG 環境変数を追加 | ドキュメント乖離レポート (#3) 対応 |
+| 1.3 | 2026-02-24 | check コマンドに設定上書きフラグ（--max-lines-per-file 等6種）を追加、設定ファイルなし実行の対応、優先順位の明記 | #22 CLI フラグによる設定値の上書き対応 |

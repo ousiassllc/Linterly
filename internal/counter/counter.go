@@ -2,12 +2,16 @@ package counter
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/ousiassllc/linterly/internal/config"
 )
+
+// maxScanBufSize はスキャナーのバッファ上限（1MB）。
+const maxScanBufSize = 1024 * 1024
 
 // LineCount はファイルの行数カウント結果。
 type LineCount struct {
@@ -30,14 +34,14 @@ func CountFile(path string, mode string) (*LineCount, error) {
 		lang := DetectLanguage(path)
 		total, code, err := countCodeOnly(f, lang)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 		result.TotalLines = total
 		result.CodeLines = code
 	} else {
 		total, err := countAll(f)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 		result.TotalLines = total
 		result.CodeLines = total
@@ -97,6 +101,7 @@ func CountFiles(files []string, mode string) ([]LineCount, error) {
 // countAll はファイルの全行数をカウントする。
 func countAll(f *os.File) (int, error) {
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxScanBufSize)
 	count := 0
 	for scanner.Scan() {
 		count++
@@ -110,6 +115,7 @@ func countAll(f *os.File) (int, error) {
 // countCodeOnly はコード行数を計算する（コメント・空行除外）。
 func countCodeOnly(f *os.File, lang *Language) (total int, code int, err error) {
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxScanBufSize)
 	inBlock := false
 	// Python docstring のためのトラッカー
 	isPython := lang != nil && lang.Name == "Python"

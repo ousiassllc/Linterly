@@ -1,5 +1,7 @@
 # ビルド成果物
 bin/
+dist/
+linterly
 
 # ドキュメント（仕様書）
 docs/
