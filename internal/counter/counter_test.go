@@ -47,6 +47,15 @@ func TestCountFile_CodeOnly_HTML(t *testing.T) {
 	assert.Equal(t, 5, lc.CodeLines)
 }
 
+func TestCountFile_CodeOnly_CSS(t *testing.T) {
+	lc, err := CountFile("testdata/sample.css", config.CountModeCodeOnly)
+	require.NoError(t, err)
+	assert.Equal(t, 5, lc.TotalLines)
+	// ブロックコメント(1行) = 1 非コード行
+	// 5 - 1 = 4 コード行（"// This is NOT a CSS comment" はコード行として数える）
+	assert.Equal(t, 4, lc.CodeLines)
+}
+
 func TestCountFile_CodeOnly_Shell(t *testing.T) {
 	lc, err := CountFile("testdata/sample.sh", config.CountModeCodeOnly)
 	require.NoError(t, err)

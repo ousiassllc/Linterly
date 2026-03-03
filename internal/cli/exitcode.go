@@ -15,7 +15,9 @@ const (
 type ExitError struct {
 	Code    int
 	Message string
-	Cause   error
+	// Cause は原因エラー。現在 NewRuntimeError/NewViolationError では設定しないが、
+	// 将来のエラーチェーン対応（errors.Is/errors.As）のために保持する。
+	Cause error
 }
 
 func (e *ExitError) Error() string {

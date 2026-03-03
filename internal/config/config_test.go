@@ -209,12 +209,20 @@ func TestLoad_NoConfigFile_ReturnsDefaults(t *testing.T) {
 func TestLoad_ExplicitConfigPath_NotFound(t *testing.T) {
 	_, err := Load("/nonexistent/path/config.yml")
 	require.Error(t, err)
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "err.config_not_found", cfgErr.Code)
 }
 
 func TestLoad_EnvVariable_NotFound(t *testing.T) {
 	t.Setenv("LINTERLY_CONFIG", "/nonexistent/path.yml")
 	_, err := Load("")
 	require.Error(t, err)
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "err.config_not_found", cfgErr.Code)
 }
 
 func TestLoad_WarningThresholdZeroIsValid(t *testing.T) {

@@ -203,25 +203,49 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
+// wrapViperError は viper の ReadInConfig エラーを ConfigError にラップする。
+func wrapViperError(err error) *ConfigError {
+	var notFoundErr viper.ConfigFileNotFoundError
+	if os.IsNotExist(err) || errors.As(err, &notFoundErr) {
+		return &ConfigError{
+			Code:    "err.config_not_found",
+			Message: err.Error(),
+		}
+	}
+	return &ConfigError{
+		Code:    "err.config_parse",
+		Message: err.Error(),
+	}
+}
+
 // findAndReadConfig は探索順序に従って設定ファイルを見つけて読み込む。
 // explicit は、ユーザーが明示的にパスを指定したかどうかを示す。
 func findAndReadConfig(v *viper.Viper, configPath string) (explicit bool, err error) {
 	if configPath != "" {
 		v.SetConfigFile(configPath)
-		return true, v.ReadInConfig()
+		if err := v.ReadInConfig(); err != nil {
+			return true, wrapViperError(err)
+		}
+		return true, nil
 	}
 
 	// LINTERLY_CONFIG 環境変数
 	if envPath := os.Getenv("LINTERLY_CONFIG"); envPath != "" {
 		v.SetConfigFile(envPath)
-		return true, v.ReadInConfig()
+		if err := v.ReadInConfig(); err != nil {
+			return true, wrapViperError(err)
+		}
+		return true, nil
 	}
 
 	// カレントディレクトリの .linterly.yml / .linterly.yaml
 	for _, name := range DefaultConfigFileNames {
 		if _, err := os.Stat(name); err == nil {
 			v.SetConfigFile(name)
-			return false, v.ReadInConfig()
+			if err := v.ReadInConfig(); err != nil {
+				return false, wrapViperError(err)
+			}
+			return false, nil
 		}
 	}
 
