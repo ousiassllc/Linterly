@@ -20,6 +20,7 @@ graph TD
     CLI --> Reporter
     CLI --> I18n
     CLI -.-> UC
+    UC --> I18n
     Scanner --> Config
     Counter --> Config
     Analyzer --> Counter
@@ -366,6 +367,11 @@ ignore.both_defined: >-
 init.created: "Created .linterly.yml"
 init.overwrite: ".linterly.yml already exists. Overwrite? [y/N]:"
 init.overwritten: "Overwritten .linterly.yml"
+update.available: "A new version of linterly is available: %s → %s"
+update.run: "Run `%s` to update."
+update.visit: "Visit %s to update."
+update.unknown_version: "Unable to determine the current version of linterly."
+update.unknown_visit: "Visit %s to get the latest version."
 ```
 
 ```yaml
@@ -379,13 +385,18 @@ ignore.both_defined: >-
 init.created: ".linterly.yml を作成しました"
 init.overwrite: ".linterly.yml が既に存在します。上書きしますか？ [y/N]:"
 init.overwritten: ".linterly.yml を上書きしました"
+update.available: "linterly の新しいバージョンが利用可能です: %s → %s"
+update.run: "`%s` を実行して更新してください。"
+update.visit: "%s から更新してください。"
+update.unknown_version: "linterly の現在のバージョンを特定できません。"
+update.unknown_visit: "%s から最新版を取得してください。"
 ```
 
 ### 2.8 updatecheck
 
 **責務**: バージョン更新チェック。GitHub Releases API から最新バージョンを取得し、現在バージョンと比較して更新通知メッセージを生成する。
 
-**依存**: なし（cli パッケージの `Version` 変数を引数として受け取る）
+**依存**: i18n（通知メッセージの翻訳に使用）
 
 **パッケージ**: `internal/updatecheck`
 
@@ -399,6 +410,7 @@ init.overwritten: ".linterly.yml を上書きしました"
 // CheckResult は更新チェックの結果
 type CheckResult struct {
     UpdateAvailable bool   // 更新があるか
+    VersionUnknown  bool   // 現在バージョンを特定できなかったか
     CurrentVersion  string // 現在のバージョン（例: "v0.3.1"）
     LatestVersion   string // 最新のバージョン（例: "v0.4.0"）
     Message         string // 表示用メッセージ（更新がない場合は空）
@@ -460,9 +472,10 @@ func DetectInstallMethod() InstallMethod
 
 #### バージョン比較ロジック
 
-1. 現在バージョンが `"dev"` の場合、`debug.ReadBuildInfo()` からモジュールバージョンを取得して使用する。取得不可の場合のみチェックをスキップする
-2. 現在バージョンと最新バージョンの `v` プレフィックスを正規化する
-3. セマンティックバージョニングで比較し、最新 > 現在 → `UpdateAvailable: true`
+1. 現在バージョンが `"dev"` の場合、`debug.ReadBuildInfo()` からモジュールバージョンを取得して使用する
+2. いずれでも取得できない場合（`VersionUnknown: true`）、バージョン比較をスキップし、毎回「バージョンを特定できません」の通知を表示する（キャッシュ不使用）
+3. バージョンが取得できた場合、現在バージョンと最新バージョンの `v` プレフィックスを正規化する
+4. セマンティックバージョニングで比較し、最新 > 現在 → `UpdateAvailable: true`
 
 #### CLI からの呼び出しパターン
 
@@ -492,7 +505,7 @@ func printUpdateNotice() {
     }
     select {
     case result := <-updateResult:
-        if result != nil && result.UpdateAvailable {
+        if result != nil && (result.UpdateAvailable || result.VersionUnknown) {
             fmt.Fprintln(os.Stderr)
             fmt.Fprintln(os.Stderr, result.Message)
         }
@@ -546,3 +559,4 @@ sequenceDiagram
 | 1.3 | 2026-02-08 | CountFiles のシグネチャを実装に合わせて修正、NewReporter のシグネチャを更新、Config の i18n 依存を CLI 経由に変更、ResolveLanguage を追加 | ドキュメント乖離レポート (#3) 対応 |
 | 1.4 | 2026-02-24 | cli: 設定上書きフラグを追加、config: Overrides 型と ApplyOverrides メソッドを追加、Load の設定ファイルなし動作を更新、シーケンス図に ApplyOverrides ステップを追加 | #22 CLI フラグによる設定値の上書き対応 |
 | 1.5 | 2026-03-03 | 2.8 updatecheck コンポーネント追加（Checker・CheckResult・InstallMethod・キャッシュ・CLI 呼び出しパターン）、コンポーネント構成図に UC 追加、シーケンス図に非同期チェック追加 | #30 バージョン更新チェック機能 |
+| 1.6 | 2026-03-03 | updatecheck: i18n 依存追加、CheckResult に VersionUnknown フィールド追加、バージョン不明時は毎回通知に変更、i18n メッセージ例に update.* キーを追加 | #30 フィードバック反映 |

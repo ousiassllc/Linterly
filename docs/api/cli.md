@@ -255,7 +255,7 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 
 ## 3. バージョン更新チェック
 
-全コマンド実行時に、バックグラウンドで最新バージョンをチェックする。更新がある場合、コマンド出力の末尾に stderr で通知を表示する。
+全コマンド実行時に、バックグラウンドで最新バージョンをチェックする。更新がある場合、コマンド出力の末尾に stderr で通知を表示する。通知メッセージは i18n 対応（`language` 設定・`--lang` フラグに従う）。
 
 #### 出力例（go install 経由）
 
@@ -290,6 +290,16 @@ A new version of linterly is available: v0.3.1 → v0.4.0
 Visit https://github.com/ousiassllc/linterly/releases/latest to update.
 ```
 
+#### 出力例（バージョン不明時）
+
+```
+Unable to determine the current version of linterly.
+Visit https://github.com/ousiassllc/linterly/releases/latest to get the latest version.
+```
+
+- バージョン不明時は最新バージョンとの比較を行わず、毎回この通知を表示する
+- キャッシュは使用しない（バージョン比較ができないため）
+
 #### インストール経路の検出ロジック
 
 | 経路 | 検出方法 | 案内メッセージ |
@@ -302,7 +312,6 @@ Visit https://github.com/ousiassllc/linterly/releases/latest to update.
 
 - `--no-update-check` フラグ（全コマンド共通）
 - `LINTERLY_NO_UPDATE_CHECK` 環境変数（値が空でなければ無効化）
-- `Version` が `"dev"` かつ `debug.ReadBuildInfo()` でもバージョン取得不可の場合、チェックをスキップする
 
 ## 4. 終了コード
 
@@ -355,3 +364,4 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 1.2 | 2026-02-08 | warning(s) 表記修正、ignore 重複警告を 1 行表記に修正、version 出力例更新、--lang フラグと LINTERLY_LANG 環境変数を追加 | ドキュメント乖離レポート (#3) 対応 |
 | 1.3 | 2026-02-24 | check コマンドに設定上書きフラグ（--max-lines-per-file 等6種）を追加、設定ファイルなし実行の対応、優先順位の明記 | #22 CLI フラグによる設定値の上書き対応 |
 | 1.4 | 2026-03-03 | 3. バージョン更新チェックセクション追加（出力例・経路検出・無効化）、--no-update-check フラグと LINTERLY_NO_UPDATE_CHECK 環境変数を追加、優先順位表に更新チェック行を追加 | #30 バージョン更新チェック機能 |
+| 1.5 | 2026-03-03 | 通知メッセージを i18n 対応に変更、バージョン不明時の出力例を追加、無効化条件からバージョン不明時スキップを削除 | #30 フィードバック反映 |
