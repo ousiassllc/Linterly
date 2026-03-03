@@ -101,6 +101,7 @@ type Config struct {
     Ignore          []string `yaml:"ignore"`
     DefaultExcludes bool     `yaml:"default_excludes"`
     Language        string   `yaml:"language"`
+    UpdateCheck     bool     `yaml:"update_check"`
 }
 
 type Rules struct {
@@ -424,14 +425,17 @@ type CheckResult struct {
 // Checker はバージョン更新チェッカー
 type Checker struct {
     currentVersion string
+    translator     *i18n.Translator
     cacheDir       string
+    apiURL         string
     httpClient     *http.Client
 }
 
 // NewChecker は Checker を生成する
 // currentVersion はセマンティックバージョニング形式（"v0.3.1" または "0.3.1"）
+// translator は通知メッセージの翻訳に使用する
 // HTTP クライアントのタイムアウトは 3 秒、User-Agent は "linterly/<version>" 形式
-func NewChecker(currentVersion string) *Checker
+func NewChecker(currentVersion string, translator *i18n.Translator) *Checker
 
 // Check は最新バージョンをチェックし結果を返す
 // キャッシュが有効な場合はキャッシュを使用し、期限切れの場合は GitHub API を呼び出す

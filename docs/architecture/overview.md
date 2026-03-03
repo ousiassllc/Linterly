@@ -82,9 +82,9 @@ linterly/
 │   │   │   └── package.json
 │   │   └── win32-x64/      #   @linterly/win32-x64
 │   │       └── package.json
-│   ├── cargo/              #   crates.io ラッパー
-│   ├── pip/                #   PyPI ラッパー
-│   └── docker/
+│   ├── cargo/              #   crates.io ラッパー（将来実装予定）
+│   ├── pip/                #   PyPI ラッパー（将来実装予定）
+│   └── docker/             #   Docker イメージ（将来実装予定）
 │       └── Dockerfile
 ├── .github/
 │   └── workflows/
