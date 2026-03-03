@@ -147,6 +147,7 @@ func DefaultExcludePatterns() []string
 | ファイル | 責務 |
 |---------|------|
 | `scanner.go` | ディレクトリ走査、除外フィルタ適用、goroutine による並行処理 |
+| `binary.go` | バイナリファイル判定（拡張子チェック + null バイト検出の2段階判定） |
 
 #### 主要インターフェース
 
@@ -170,11 +171,15 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error)
 #### 走査ロジック
 
 1. `targetPath` を起点にディレクトリを再帰走査する
-2. デフォルト除外パターン（`default_excludes: true` の場合）を適用する
-3. ignore パターン（`.linterlyignore` または設定ファイルの `ignore`）を適用する
+2. 正規ファイル以外（シンボリックリンク等）をスキップする
+3. デフォルト除外パターン（`default_excludes: true` の場合）を適用する
+4. ignore パターン（`.linterlyignore` または設定ファイルの `ignore`）を適用する
    - パターンは常にプロジェクトルート（cwd）を基準に評価される
    - サブディレクトリをターゲットに指定した場合も、パターンの評価基準は変わらない
-4. 除外されなかったファイル・ディレクトリを `ScanResult` に格納する
+5. バイナリファイルをスキップする（2段階判定）
+   - 第1段階: 既知のバイナリ拡張子（`.png`, `.jpg`, `.exe`, `.zip` 等）を I/O なしで除外
+   - 第2段階: 拡張子で判定できない場合、ファイル先頭 8KB を読み null バイト（`\x00`）の有無で判定
+6. 除外されなかったファイル・ディレクトリを `ScanResult` に格納する
 
 ---
 
