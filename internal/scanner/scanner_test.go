@@ -28,6 +28,9 @@ func TestScan_BasicScan(t *testing.T) {
 	assert.Contains(t, paths, "vendor/lib.go")
 	assert.Contains(t, paths, "node_modules/pkg.js")
 	assert.Contains(t, paths, "app.min.js")
+
+	// バイナリファイルはスキップされる
+	assert.NotContains(t, paths, "build/out.bin", "バイナリ拡張子 .bin はスキップされるべき")
 }
 
 func TestScan_DefaultExcludes(t *testing.T) {
