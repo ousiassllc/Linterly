@@ -19,7 +19,7 @@ var initCmd = &cobra.Command{
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
-	const filename = ".linterly.yml"
+	filename := config.DefaultConfigFileName
 
 	// config 読み込み前に言語を解決して Translator を初期化
 	translator, _, err := initTranslator()

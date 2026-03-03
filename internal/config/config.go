@@ -12,7 +12,18 @@ import (
 const (
 	CountModeAll      = "all"
 	CountModeCodeOnly = "code_only"
+
+	// デフォルトルール値
+	DefaultMaxLinesPerFile      = 300
+	DefaultMaxLinesPerDirectory = 2000
+	DefaultWarningThreshold     = 10
+
+	// デフォルト設定ファイル名（init コマンド用）
+	DefaultConfigFileName = ".linterly.yml"
 )
+
+// DefaultConfigFileNames は設定ファイルの探索候補。
+var DefaultConfigFileNames = []string{DefaultConfigFileName, ".linterly.yaml"}
 
 // ConfigError は設定ファイルに関するエラーを表す。
 // Code は i18n メッセージキーに対応する。
@@ -40,20 +51,20 @@ func (e *ValidationErrors) Error() string {
 }
 
 // DefaultConfigTemplate は linterly init で生成する設定テンプレート。
-const DefaultConfigTemplate = `# Linterly 設定ファイル
+var DefaultConfigTemplate = fmt.Sprintf(`# Linterly 設定ファイル
 # https://github.com/ousiassllc/linterly
 
 rules:
-  max_lines_per_file: 300
-  max_lines_per_directory: 2000
-  warning_threshold: 10
+  max_lines_per_file: %d
+  max_lines_per_directory: %d
+  warning_threshold: %d
 
 count_mode: all
 
 # default_excludes: true
 # language: en
 # update_check: true
-`
+`, DefaultMaxLinesPerFile, DefaultMaxLinesPerDirectory, DefaultWarningThreshold)
 
 // Config は設定ファイルの内容を表す。
 type Config struct {
@@ -114,9 +125,9 @@ func (c *Config) ApplyOverrides(o *Overrides) error {
 func defaultConfig() *Config {
 	return &Config{
 		Rules: Rules{
-			MaxLinesPerFile:      300,
-			MaxLinesPerDirectory: 2000,
-			WarningThreshold:     10,
+			MaxLinesPerFile:      DefaultMaxLinesPerFile,
+			MaxLinesPerDirectory: DefaultMaxLinesPerDirectory,
+			WarningThreshold:     DefaultWarningThreshold,
 		},
 		CountMode:       CountModeAll,
 		Ignore:          []string{},
@@ -156,9 +167,9 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	// デフォルト値の設定
-	v.SetDefault("rules.max_lines_per_file", 300)
-	v.SetDefault("rules.max_lines_per_directory", 2000)
-	v.SetDefault("rules.warning_threshold", 10)
+	v.SetDefault("rules.max_lines_per_file", DefaultMaxLinesPerFile)
+	v.SetDefault("rules.max_lines_per_directory", DefaultMaxLinesPerDirectory)
+	v.SetDefault("rules.warning_threshold", DefaultWarningThreshold)
 	v.SetDefault("count_mode", CountModeAll)
 	v.SetDefault("ignore", []string{})
 	v.SetDefault("default_excludes", true)
@@ -196,7 +207,7 @@ func findAndReadConfig(v *viper.Viper, configPath string) (explicit bool, err er
 	}
 
 	// カレントディレクトリの .linterly.yml / .linterly.yaml
-	for _, name := range []string{".linterly.yml", ".linterly.yaml"} {
+	for _, name := range DefaultConfigFileNames {
 		if _, err := os.Stat(name); err == nil {
 			v.SetConfigFile(name)
 			return false, v.ReadInConfig()

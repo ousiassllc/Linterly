@@ -44,10 +44,10 @@ func init() {
 	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text or json)")
 
 	// 設定上書きフラグ
-	checkCmd.Flags().IntVar(&flagMaxLinesPerFile, "max-lines-per-file", 300, "max lines per file")
-	checkCmd.Flags().IntVar(&flagMaxLinesPerDirectory, "max-lines-per-directory", 2000, "max lines per directory")
-	checkCmd.Flags().IntVar(&flagWarningThreshold, "warning-threshold", 10, "warning threshold (%)")
-	checkCmd.Flags().StringVar(&flagCountMode, "count-mode", "all", "count mode (all or code_only)")
+	checkCmd.Flags().IntVar(&flagMaxLinesPerFile, "max-lines-per-file", config.DefaultMaxLinesPerFile, "max lines per file")
+	checkCmd.Flags().IntVar(&flagMaxLinesPerDirectory, "max-lines-per-directory", config.DefaultMaxLinesPerDirectory, "max lines per directory")
+	checkCmd.Flags().IntVar(&flagWarningThreshold, "warning-threshold", config.DefaultWarningThreshold, "warning threshold (%)")
+	checkCmd.Flags().StringVar(&flagCountMode, "count-mode", config.CountModeAll, "count mode (all or code_only)")
 	checkCmd.Flags().StringArrayVar(&flagIgnore, "ignore", nil, "ignore pattern (can be specified multiple times)")
 	checkCmd.Flags().BoolVar(&flagNoDefaultExcludes, "no-default-excludes", false, "disable default excludes")
 }
