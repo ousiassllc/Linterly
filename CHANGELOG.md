@@ -1,5 +1,38 @@
 # Changelog
 
+## [v0.3.2] - 2026-03-03
+
+### ✨ New Features / 新機能
+- バージョン更新チェック機能を追加（非同期チェック・キャッシュ・--no-update-check フラグ） / Add version update check with async checking, cache, and --no-update-check flag (#30)
+- バイナリファイルをスキャン対象から自動除外 / Automatically skip binary files from scan targets (#29)
+
+### 🐛 Bug Fixes / バグ修正
+- サブディレクトリ指定時の ignore パターン不一致を修正 / Fix ignore pattern mismatch when targeting subdirectories (#27)
+- ignore 重複警告メッセージを i18n 対応 / Add i18n support for ignore duplicate warning messages (#33)
+- version コマンド出力に v プレフィックスを付与 / Add v prefix to version command output (#33)
+- CSS の行コメント `//` を非標準として除外 / Remove non-standard `//` line comment from CSS definition (#35)
+- findAndReadConfig のエラーを ConfigError にラップして i18n 対応 / Wrap findAndReadConfig errors in ConfigError for i18n support (#35)
+
+### 🔧 Improvements / 改善
+- デフォルト値と設定ファイル名を定数化して重複除去 / Extract default values and config file names into constants (#35)
+- サポート言語判定を i18n.IsSupportedLanguage に統一 / Unify supported language validation via i18n.IsSupportedLanguage (#35)
+- init コマンドで cobra の I/O メソッドを使用しテスタビリティ向上 / Use cobra I/O methods in init command for better testability (#35)
+- IgnorePatterns にキャッシュを導入し二重呼び出しを解消 / Add cache to IgnorePatterns to eliminate duplicate file I/O (#35)
+- countAll/countCodeOnly の引数を io.Reader に変更 / Change countAll/countCodeOnly parameter from *os.File to io.Reader (#35)
+- TextReporter の NO_COLOR 判定を初期化時に移動 / Move NO_COLOR check to TextReporter initialization (#35)
+- JSONReporter に warnings フィールドを追加 / Add warnings field to JSONReporter output (#35)
+- scanner のデッドコード（ルートディレクトリ補完ブロック）を削除 / Remove dead code for root directory补completion in scanner (#35)
+
+### 📝 Documentation / ドキュメント
+- ドキュメント乖離を修正（Config/Checker 定義・配布形態・設定ファイル） / Fix documentation drift for Config/Checker definitions, distribution, and config files (#34)
+- バージョン更新チェック機能の設計ドキュメントを追加 / Add design documentation for version update check feature (#30)
+- バイナリファイル自動スキップ機能のドキュメントを追加 / Add documentation for binary file auto-skip feature (#29)
+
+### 🏗️ Infrastructure / インフラ
+- .gitignore に .env / .husky/ を追加 / Add .env and .husky/ to .gitignore (#35)
+- lefthook の pre-commit にテスト実行を追加 / Add test execution to lefthook pre-commit (#35)
+- CI の go test に -count=1 を追加しキャッシュ無効化 / Add -count=1 to CI go test to disable caching (#35)
+
 ## [v0.3.1] - 2026-02-28
 
 ### 📝 ドキュメント / Documentation
