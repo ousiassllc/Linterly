@@ -2,6 +2,7 @@ package cli
 
 import (
 	"runtime"
+	"runtime/debug"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -57,6 +58,57 @@ func TestDisplayVersion(t *testing.T) {
 			defer func() { Version = oldVersion }()
 
 			assert.Equal(t, tt.want, displayVersion())
+		})
+	}
+}
+
+func TestResolveVersion(t *testing.T) {
+	tests := []struct {
+		name      string
+		version   string
+		buildInfo *debug.BuildInfo
+		ok        bool
+		want      string
+	}{
+		{
+			name:    "ldflags で設定済みならそのまま",
+			version: "1.2.3",
+			want:    "1.2.3",
+		},
+		{
+			name:      "dev で BuildInfo にバージョンあり",
+			version:   "dev",
+			buildInfo: &debug.BuildInfo{Main: debug.Module{Version: "v0.3.2"}},
+			ok:        true,
+			want:      "v0.3.2",
+		},
+		{
+			name:    "dev で BuildInfo 取得不可",
+			version: "dev",
+			ok:      false,
+			want:    "dev",
+		},
+		{
+			name:      "dev で BuildInfo が (devel)",
+			version:   "dev",
+			buildInfo: &debug.BuildInfo{Main: debug.Module{Version: "(devel)"}},
+			ok:        true,
+			want:      "dev",
+		},
+		{
+			name:      "dev で BuildInfo が空文字",
+			version:   "dev",
+			buildInfo: &debug.BuildInfo{Main: debug.Module{Version: ""}},
+			ok:        true,
+			want:      "dev",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readBI := func() (*debug.BuildInfo, bool) {
+				return tt.buildInfo, tt.ok
+			}
+			assert.Equal(t, tt.want, resolveVersion(tt.version, readBI))
 		})
 	}
 }
