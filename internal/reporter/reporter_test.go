@@ -75,11 +75,28 @@ func TestTextReporter_WithWarnings(t *testing.T) {
 	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := newTestReport()
-	warnings := []string{"Both .linterlyignore and ignore in config file are defined."}
+	warnings := []string{"ignore.both_defined"}
 	require.NoError(t, reporter.Report(report, warnings))
 
 	output := buf.String()
-	assert.Contains(t, output, "Both .linterlyignore")
+	assert.Contains(t, output, ".linterlyignore takes precedence")
+}
+
+func TestTextReporter_WithWarnings_Japanese(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+
+	tr, err := i18n.New("ja")
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	reporter := NewReporter(FormatText, tr, &buf)
+
+	report := newTestReport()
+	warnings := []string{"ignore.both_defined"}
+	require.NoError(t, reporter.Report(report, warnings))
+
+	output := buf.String()
+	assert.Contains(t, output, ".linterlyignore が優先されます")
 }
 
 func TestTextReporter_NoViolations(t *testing.T) {
@@ -137,6 +154,38 @@ func TestJSONReporter_ValidJSON(t *testing.T) {
 	assert.True(t, json.Valid(buf.Bytes()))
 }
 
+func TestJSONReporter_WithWarnings(t *testing.T) {
+	var buf bytes.Buffer
+	reporter := NewReporter(FormatJSON, nil, &buf)
+
+	report := newTestReport()
+	warnings := []string{"ignore.both_defined", "some.other.warning"}
+	require.NoError(t, reporter.Report(report, warnings))
+
+	var output jsonOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &output))
+
+	assert.Equal(t, []string{"ignore.both_defined", "some.other.warning"}, output.Warnings)
+}
+
+func TestJSONReporter_NilWarnings(t *testing.T) {
+	var buf bytes.Buffer
+	reporter := NewReporter(FormatJSON, nil, &buf)
+
+	report := newTestReport()
+	require.NoError(t, reporter.Report(report, nil))
+
+	var output jsonOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &output))
+
+	// nil の場合は空配列 [] が出力される
+	assert.NotNil(t, output.Warnings)
+	assert.Empty(t, output.Warnings)
+
+	// JSON 文字列として "warnings": [] が含まれることを確認
+	assert.Contains(t, buf.String(), `"warnings": []`)
+}
+
 func TestNewReporter_Text(t *testing.T) {
 	tr, _ := i18n.New("en")
 	var buf bytes.Buffer
@@ -153,14 +202,12 @@ func TestNewReporter_JSON(t *testing.T) {
 }
 
 func TestTextReporter_Color(t *testing.T) {
-	// NO_COLOR が設定されていない場合、カラー出力される
-	t.Setenv("NO_COLOR", "")
-
+	// noColor=false の場合、カラー出力される
 	tr, err := i18n.New("en")
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	reporter := &TextReporter{writer: &buf, translator: tr}
+	reporter := &TextReporter{writer: &buf, translator: tr, noColor: false}
 
 	report := &analyzer.AnalysisReport{
 		Results: []analyzer.Result{
@@ -172,4 +219,26 @@ func TestTextReporter_Color(t *testing.T) {
 
 	output := buf.String()
 	assert.True(t, strings.Contains(output, "\033[33m")) // yellow
+}
+
+func TestTextReporter_NoColor_Field(t *testing.T) {
+	// noColor=true を直接フィールド指定した場合、カラーが出力されないことを確認
+	tr, err := i18n.New("en")
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	reporter := &TextReporter{writer: &buf, translator: tr, noColor: true}
+
+	report := &analyzer.AnalysisReport{
+		Results: []analyzer.Result{
+			{Path: "a.go", Type: "file", Lines: 320, Limit: 300, Threshold: 330, Severity: analyzer.SeverityWarn},
+		},
+		Warnings: 1,
+	}
+	require.NoError(t, reporter.Report(report, nil))
+
+	output := buf.String()
+	assert.False(t, strings.Contains(output, "\033[33m")) // カラーなし
+	assert.False(t, strings.Contains(output, "\033[31m")) // カラーなし
+	assert.Contains(t, output, "a.go")
 }

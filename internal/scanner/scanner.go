@@ -29,7 +29,13 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 		return nil, err
 	}
 
-	matcher, err := buildMatcher(absTarget, cfg)
+	// プロジェクトルート（設定ファイル・.linterlyignore の基準ディレクトリ）
+	projectRoot, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	matcher, err := buildMatcher(projectRoot, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -42,38 +48,60 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 			return walkErr
 		}
 
-		rel, err := filepath.Rel(absTarget, path)
+		// ターゲット相対パス（FileEntry 用）
+		relFromTarget, err := filepath.Rel(absTarget, path)
 		if err != nil {
 			return err
 		}
 
 		// ルートディレクトリ自体はスキップ
-		if rel == "." {
+		if relFromTarget == "." {
 			return nil
 		}
 
+		// プロジェクトルート相対パス（ignore マッチング用）
+		relFromRoot, err := filepath.Rel(projectRoot, path)
+		if err != nil {
+			return err
+		}
+
 		// スラッシュ区切りに正規化
-		rel = filepath.ToSlash(rel)
+		relFromTarget = filepath.ToSlash(relFromTarget)
+		relFromRoot = filepath.ToSlash(relFromRoot)
 
 		if info.IsDir() {
-			if shouldExclude(matcher, rel, true) {
+			if shouldExclude(matcher, relFromRoot, true) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 
-		// ファイル
-		if shouldExclude(matcher, rel, false) {
+		// 正規ファイル以外（シンボリックリンク等）はスキップ
+		if !info.Mode().IsRegular() {
 			return nil
 		}
 
-		dir := filepath.ToSlash(filepath.Dir(rel))
+		// ファイル
+		if shouldExclude(matcher, relFromRoot, false) {
+			return nil
+		}
+
+		// バイナリファイルはスキップ
+		binary, err := isBinary(path)
+		if err != nil {
+			return err
+		}
+		if binary {
+			return nil
+		}
+
+		dir := filepath.ToSlash(filepath.Dir(relFromTarget))
 		if dir == "." {
 			dir = "."
 		}
 
 		result.Files = append(result.Files, FileEntry{
-			Path: rel,
+			Path: relFromTarget,
 			Dir:  dir,
 		})
 
@@ -89,21 +117,11 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 		return nil, err
 	}
 
-	// ルートディレクトリも含める（ファイルがある場合）
-	if !dirSet["."] {
-		for _, f := range result.Files {
-			if f.Dir == "." {
-				result.Dirs = append([]string{"."}, result.Dirs...)
-				break
-			}
-		}
-	}
-
 	return result, nil
 }
 
 // buildMatcher は除外パターンから gitignore マッチャーを構築する。
-func buildMatcher(absTarget string, cfg *config.Config) (gitignore.GitIgnore, error) {
+func buildMatcher(basePath string, cfg *config.Config) (gitignore.GitIgnore, error) {
 	var patterns []string
 
 	// デフォルト除外パターン
@@ -126,7 +144,7 @@ func buildMatcher(absTarget string, cfg *config.Config) (gitignore.GitIgnore, er
 	content := strings.Join(patterns, "\n")
 	reader := strings.NewReader(content)
 
-	return gitignore.New(reader, absTarget, nil), nil
+	return gitignore.New(reader, basePath, nil), nil
 }
 
 // shouldExclude はパスが除外パターンにマッチするかを返す。

@@ -3,7 +3,6 @@ package reporter
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/ousiassllc/linterly/internal/analyzer"
 	"github.com/ousiassllc/linterly/internal/i18n"
@@ -13,17 +12,16 @@ import (
 type TextReporter struct {
 	writer     io.Writer
 	translator *i18n.Translator
+	noColor    bool
 }
 
 // Report は分析結果をテキスト形式で出力する。
 // テキスト出力では violation（warn/error）のみ表示し、pass は表示しない。
 func (r *TextReporter) Report(report *analyzer.AnalysisReport, warnings []string) error {
-	noColor := os.Getenv("NO_COLOR") != ""
-
 	// ignore 重複警告を先に出力
 	for _, w := range warnings {
-		line := fmt.Sprintf("  WARN  %s", w)
-		if !noColor {
+		line := fmt.Sprintf("  WARN  %s", r.translator.T(w))
+		if !r.noColor {
 			line = colorYellow(line)
 		}
 		fmt.Fprintln(r.writer, line)
@@ -38,7 +36,7 @@ func (r *TextReporter) Report(report *analyzer.AnalysisReport, warnings []string
 		switch result.Severity {
 		case analyzer.SeverityWarn:
 			line := r.translator.T("check.warn", result.Path, result.Lines, result.Limit)
-			if !noColor {
+			if !r.noColor {
 				line = colorYellow("  " + line)
 			} else {
 				line = "  " + line
@@ -47,7 +45,7 @@ func (r *TextReporter) Report(report *analyzer.AnalysisReport, warnings []string
 			hasViolation = true
 		case analyzer.SeverityError:
 			line := r.translator.T("check.error", result.Path, result.Lines, result.Limit)
-			if !noColor {
+			if !r.noColor {
 				line = colorRed("  " + line)
 			} else {
 				line = "  " + line

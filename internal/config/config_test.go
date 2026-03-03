@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,6 +22,7 @@ func TestLoad_FullConfig(t *testing.T) {
 	assert.Equal(t, []string{"vendor/**", "*.pb.go"}, cfg.Ignore)
 	assert.Equal(t, false, cfg.DefaultExcludes)
 	assert.Equal(t, "ja", cfg.Language)
+	assert.Equal(t, false, cfg.UpdateCheck)
 }
 
 func TestLoad_MinimalConfig(t *testing.T) {
@@ -35,6 +37,7 @@ func TestLoad_MinimalConfig(t *testing.T) {
 	assert.Empty(t, cfg.Ignore)
 	assert.Equal(t, true, cfg.DefaultExcludes)
 	assert.Equal(t, "en", cfg.Language)
+	assert.Equal(t, true, cfg.UpdateCheck)
 }
 
 func TestLoad_RulesOnlyConfig(t *testing.T) {
@@ -47,6 +50,7 @@ func TestLoad_RulesOnlyConfig(t *testing.T) {
 	assert.Equal(t, "all", cfg.CountMode)
 	assert.Equal(t, true, cfg.DefaultExcludes)
 	assert.Equal(t, "en", cfg.Language)
+	assert.Equal(t, true, cfg.UpdateCheck)
 }
 
 func TestLoad_MissingRulesSection(t *testing.T) {
@@ -199,17 +203,26 @@ func TestLoad_NoConfigFile_ReturnsDefaults(t *testing.T) {
 	assert.Empty(t, cfg.Ignore)
 	assert.Equal(t, true, cfg.DefaultExcludes)
 	assert.Equal(t, "en", cfg.Language)
+	assert.Equal(t, true, cfg.UpdateCheck)
 }
 
 func TestLoad_ExplicitConfigPath_NotFound(t *testing.T) {
 	_, err := Load("/nonexistent/path/config.yml")
 	require.Error(t, err)
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "err.config_not_found", cfgErr.Code)
 }
 
 func TestLoad_EnvVariable_NotFound(t *testing.T) {
 	t.Setenv("LINTERLY_CONFIG", "/nonexistent/path.yml")
 	_, err := Load("")
 	require.Error(t, err)
+
+	var cfgErr *ConfigError
+	require.True(t, errors.As(err, &cfgErr))
+	assert.Equal(t, "err.config_not_found", cfgErr.Code)
 }
 
 func TestLoad_WarningThresholdZeroIsValid(t *testing.T) {
@@ -243,12 +256,13 @@ func TestLoad_WarningThreshold100IsValid(t *testing.T) {
 }
 
 func TestDefaultConfigTemplate(t *testing.T) {
-	assert.Contains(t, DefaultConfigTemplate, "max_lines_per_file: 300")
-	assert.Contains(t, DefaultConfigTemplate, "max_lines_per_directory: 2000")
-	assert.Contains(t, DefaultConfigTemplate, "warning_threshold: 10")
+	assert.Contains(t, DefaultConfigTemplate, fmt.Sprintf("max_lines_per_file: %d", DefaultMaxLinesPerFile))
+	assert.Contains(t, DefaultConfigTemplate, fmt.Sprintf("max_lines_per_directory: %d", DefaultMaxLinesPerDirectory))
+	assert.Contains(t, DefaultConfigTemplate, fmt.Sprintf("warning_threshold: %d", DefaultWarningThreshold))
 	assert.Contains(t, DefaultConfigTemplate, "count_mode: all")
 	assert.Contains(t, DefaultConfigTemplate, "# default_excludes: true")
 	assert.Contains(t, DefaultConfigTemplate, "# language: en")
+	assert.Contains(t, DefaultConfigTemplate, "# update_check: true")
 }
 
 // codeList は ValidationErrors から Code の一覧を返すヘルパー。

@@ -7,12 +7,25 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+
+	"github.com/ousiassllc/linterly/internal/i18n"
 )
 
 const (
 	CountModeAll      = "all"
 	CountModeCodeOnly = "code_only"
+
+	// デフォルトルール値
+	DefaultMaxLinesPerFile      = 300
+	DefaultMaxLinesPerDirectory = 2000
+	DefaultWarningThreshold     = 10
+
+	// デフォルト設定ファイル名（init コマンド用）
+	DefaultConfigFileName = ".linterly.yml"
 )
+
+// DefaultConfigFileNames は設定ファイルの探索候補。
+var DefaultConfigFileNames = []string{DefaultConfigFileName, ".linterly.yaml"}
 
 // ConfigError は設定ファイルに関するエラーを表す。
 // Code は i18n メッセージキーに対応する。
@@ -40,19 +53,20 @@ func (e *ValidationErrors) Error() string {
 }
 
 // DefaultConfigTemplate は linterly init で生成する設定テンプレート。
-const DefaultConfigTemplate = `# Linterly 設定ファイル
+var DefaultConfigTemplate = fmt.Sprintf(`# Linterly 設定ファイル
 # https://github.com/ousiassllc/linterly
 
 rules:
-  max_lines_per_file: 300
-  max_lines_per_directory: 2000
-  warning_threshold: 10
+  max_lines_per_file: %d
+  max_lines_per_directory: %d
+  warning_threshold: %d
 
 count_mode: all
 
 # default_excludes: true
 # language: en
-`
+# update_check: true
+`, DefaultMaxLinesPerFile, DefaultMaxLinesPerDirectory, DefaultWarningThreshold)
 
 // Config は設定ファイルの内容を表す。
 type Config struct {
@@ -61,6 +75,15 @@ type Config struct {
 	Ignore          []string `yaml:"ignore" mapstructure:"ignore"`
 	DefaultExcludes bool     `yaml:"default_excludes" mapstructure:"default_excludes"`
 	Language        string   `yaml:"language" mapstructure:"language"`
+	UpdateCheck     bool     `yaml:"update_check" mapstructure:"update_check"`
+
+	ignoreCache *ignoreCacheEntry
+}
+
+type ignoreCacheEntry struct {
+	patterns []string
+	warnings []string
+	err      error
 }
 
 // Rules はチェックルールの設定。
@@ -101,6 +124,7 @@ func (c *Config) ApplyOverrides(o *Overrides) error {
 	}
 	if o.Ignore != nil {
 		c.Ignore = o.Ignore
+		c.ignoreCache = nil
 	}
 	if o.NoDefaultExcludes {
 		c.DefaultExcludes = false
@@ -112,14 +136,15 @@ func (c *Config) ApplyOverrides(o *Overrides) error {
 func defaultConfig() *Config {
 	return &Config{
 		Rules: Rules{
-			MaxLinesPerFile:      300,
-			MaxLinesPerDirectory: 2000,
-			WarningThreshold:     10,
+			MaxLinesPerFile:      DefaultMaxLinesPerFile,
+			MaxLinesPerDirectory: DefaultMaxLinesPerDirectory,
+			WarningThreshold:     DefaultWarningThreshold,
 		},
 		CountMode:       CountModeAll,
 		Ignore:          []string{},
 		DefaultExcludes: true,
 		Language:        "en",
+		UpdateCheck:     true,
 	}
 }
 
@@ -153,13 +178,14 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	// デフォルト値の設定
-	v.SetDefault("rules.max_lines_per_file", 300)
-	v.SetDefault("rules.max_lines_per_directory", 2000)
-	v.SetDefault("rules.warning_threshold", 10)
+	v.SetDefault("rules.max_lines_per_file", DefaultMaxLinesPerFile)
+	v.SetDefault("rules.max_lines_per_directory", DefaultMaxLinesPerDirectory)
+	v.SetDefault("rules.warning_threshold", DefaultWarningThreshold)
 	v.SetDefault("count_mode", CountModeAll)
 	v.SetDefault("ignore", []string{})
 	v.SetDefault("default_excludes", true)
 	v.SetDefault("language", "en")
+	v.SetDefault("update_check", true)
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -177,25 +203,49 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
+// wrapViperError は viper の ReadInConfig エラーを ConfigError にラップする。
+func wrapViperError(err error) *ConfigError {
+	var notFoundErr viper.ConfigFileNotFoundError
+	if os.IsNotExist(err) || errors.As(err, &notFoundErr) {
+		return &ConfigError{
+			Code:    "err.config_not_found",
+			Message: err.Error(),
+		}
+	}
+	return &ConfigError{
+		Code:    "err.config_parse",
+		Message: err.Error(),
+	}
+}
+
 // findAndReadConfig は探索順序に従って設定ファイルを見つけて読み込む。
 // explicit は、ユーザーが明示的にパスを指定したかどうかを示す。
 func findAndReadConfig(v *viper.Viper, configPath string) (explicit bool, err error) {
 	if configPath != "" {
 		v.SetConfigFile(configPath)
-		return true, v.ReadInConfig()
+		if err := v.ReadInConfig(); err != nil {
+			return true, wrapViperError(err)
+		}
+		return true, nil
 	}
 
 	// LINTERLY_CONFIG 環境変数
 	if envPath := os.Getenv("LINTERLY_CONFIG"); envPath != "" {
 		v.SetConfigFile(envPath)
-		return true, v.ReadInConfig()
+		if err := v.ReadInConfig(); err != nil {
+			return true, wrapViperError(err)
+		}
+		return true, nil
 	}
 
 	// カレントディレクトリの .linterly.yml / .linterly.yaml
-	for _, name := range []string{".linterly.yml", ".linterly.yaml"} {
+	for _, name := range DefaultConfigFileNames {
 		if _, err := os.Stat(name); err == nil {
 			v.SetConfigFile(name)
-			return false, v.ReadInConfig()
+			if err := v.ReadInConfig(); err != nil {
+				return false, wrapViperError(err)
+			}
+			return false, nil
 		}
 	}
 
@@ -233,7 +283,7 @@ func validate(cfg *Config) error {
 			Message: `"count_mode" must be "all" or "code_only"`,
 		})
 	}
-	if cfg.Language != "en" && cfg.Language != "ja" {
+	if !i18n.IsSupportedLanguage(cfg.Language) {
 		errs = append(errs, &ConfigError{
 			Code:    "validation.language",
 			Message: `"language" must be "en" or "ja"`,

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ousiassllc/linterly/internal/config"
@@ -44,6 +45,15 @@ func TestCountFile_CodeOnly_HTML(t *testing.T) {
 	// ブロックコメント(5行) + 空行(0) = 5 非コード行
 	// 10 - 5 = 5 コード行
 	assert.Equal(t, 5, lc.CodeLines)
+}
+
+func TestCountFile_CodeOnly_CSS(t *testing.T) {
+	lc, err := CountFile("testdata/sample.css", config.CountModeCodeOnly)
+	require.NoError(t, err)
+	assert.Equal(t, 5, lc.TotalLines)
+	// ブロックコメント(1行) = 1 非コード行
+	// 5 - 1 = 4 コード行（"// This is NOT a CSS comment" はコード行として数える）
+	assert.Equal(t, 4, lc.CodeLines)
 }
 
 func TestCountFile_CodeOnly_Shell(t *testing.T) {
@@ -162,4 +172,20 @@ func TestCountFile_ScannerError_CodeOnlyMode(t *testing.T) {
 	_, err := CountFile(path, config.CountModeCodeOnly)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), path)
+}
+
+func TestCountAll_FromReader(t *testing.T) {
+	r := strings.NewReader("line1\nline2\nline3\n")
+	count, err := countAll(r)
+	require.NoError(t, err)
+	assert.Equal(t, 3, count)
+}
+
+func TestCountCodeOnly_FromReader(t *testing.T) {
+	r := strings.NewReader("package main\n\n// comment\nfunc main() {}\n")
+	lang := DetectLanguage("example.go")
+	total, code, err := countCodeOnly(r, lang)
+	require.NoError(t, err)
+	assert.Equal(t, 4, total)
+	assert.Equal(t, 2, code)
 }

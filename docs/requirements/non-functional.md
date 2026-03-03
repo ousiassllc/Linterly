@@ -38,10 +38,10 @@
 | npm パッケージ（メイン） | `@linterly/cli` | npm registry | 薄い JS ラッパー。`optionalDependencies` で各プラットフォーム用パッケージを参照。`npx @linterly/cli` で即実行可能 |
 | npm パッケージ（バイナリ） | `@linterly/darwin-arm64` 等 | npm registry | プラットフォーム別の Go バイナリを同梱。npm が現在の OS に合うものだけを自動インストール |
 | Go モジュール | `github.com/ousiassllc/linterly` | Go module proxy | `go install` で直接インストール可能 |
-| cargo crate | `linterly` | crates.io | Go バイナリをラップ。`build.rs` でバイナリをダウンロード |
-| pip パッケージ | `linterly` | PyPI | Go バイナリをラップ。プラットフォーム対応 wheel で配布 |
-| Docker イメージ | `ghcr.io/ousiassllc/linterly` | GitHub Container Registry | Alpine ベースの軽量イメージ |
-| GitHub Action | `ousiassllc/linterly-action` | GitHub Marketplace | Docker ベースまたはコンポジットアクション |
+| cargo crate | `linterly` | crates.io | Go バイナリをラップ。`build.rs` でバイナリをダウンロード（将来実装予定） |
+| pip パッケージ | `linterly` | PyPI | Go バイナリをラップ。プラットフォーム対応 wheel で配布（将来実装予定） |
+| Docker イメージ | `ghcr.io/ousiassllc/linterly` | GitHub Container Registry | Alpine ベースの軽量イメージ（将来実装予定） |
+| GitHub Action | `ousiassllc/linterly-action` | GitHub Marketplace | Docker ベースまたはコンポジットアクション（将来実装予定） |
 
 ### 配布方針
 
@@ -68,7 +68,41 @@
 - メッセージキーは英語ベースの識別子（例: `err.file_too_long`）
 - 将来的な言語追加が容易な構造とする
 
-## 5. セキュリティ
+## 5. バージョン更新チェック
+
+### ネットワーク通信
+
+| 項目 | 要件 |
+|------|------|
+| 通信先 | GitHub Releases API (`api.github.com`) のみ |
+| タイムアウト | 3 秒 |
+| リトライ | なし（失敗時はサイレントにスキップ） |
+| エラー時動作 | debug レベルでログ出力し、メインコマンドの実行には影響しない |
+
+### キャッシュ
+
+| 項目 | 要件 |
+|------|------|
+| 保存先 | `os.UserCacheDir()` 配下（`~/.cache/linterly/` 相当） |
+| 有効期間 | 24 時間 |
+| ファイル形式 | JSON（最新バージョン、取得日時） |
+| キャッシュ破損時 | 無視して再取得する |
+
+### パフォーマンスへの影響
+
+| 項目 | 要件 |
+|------|------|
+| メインコマンドへの影響 | なし（バックグラウンド goroutine で非同期実行） |
+| キャッシュヒット時 | ファイル読み込み + バージョン比較のみ（数ms以下） |
+
+### プライバシー
+
+| 項目 | 要件 |
+|------|------|
+| 送信するデータ | なし（GitHub API の GET リクエストのみ。ユーザー情報やプロジェクト情報は送信しない） |
+| User-Agent | `linterly/<version>` 形式で現在バージョンのみ含む |
+
+## 6. セキュリティ
 
 | 項目 | 要件 |
 |------|------|
@@ -76,8 +110,9 @@
 | 設定ファイル | ローカルファイルのみ。リモート設定の読み込みは行わない |
 | バイナリ配布 | GitHub Releases でチェックサム（SHA256）を提供する |
 | 依存関係 | 最小限に抑え、定期的に脆弱性スキャンを実施する |
+| 更新チェック通信 | HTTPS のみ。GitHub API の GET リクエストに限定し、ユーザーデータを送信しない |
 
-## 6. 保守性
+## 7. 保守性
 
 | 項目 | 要件 |
 |------|------|
@@ -86,13 +121,13 @@
 | リリース | セマンティックバージョニング（SemVer）に従う |
 | ドキュメント | README、CLI ヘルプ、設定ファイルリファレンスを提供する |
 
-## 7. アクセシビリティ
+## 8. アクセシビリティ
 
 | 項目 | 要件 |
 |------|------|
 | カラー出力 | `NO_COLOR` 環境変数に準拠し、設定時はカラー出力を無効化する（[no-color.org](https://no-color.org)） |
 
-## 8. 互換性
+## 9. 互換性
 
 | 項目 | 要件 |
 |------|------|
@@ -107,3 +142,4 @@
 | 1.0 | 2026-02-08 | 初版作成 | — |
 | 1.1 | 2026-02-08 | アクセシビリティ（NO_COLOR 対応）を追加 | 整合性チェックによる改善 |
 | 1.2 | 2026-02-08 | Go バージョンを 1.24+ に更新、言語切替方法に --lang フラグと LINTERLY_LANG を追加 | ドキュメント乖離レポート (#3) 対応 |
+| 1.3 | 2026-03-03 | 5. バージョン更新チェック（ネットワーク・キャッシュ・パフォーマンス・プライバシー）を追加、6. セキュリティに更新チェック通信を追記、セクション番号を整理 | #30 バージョン更新チェック機能 |
