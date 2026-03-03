@@ -30,7 +30,8 @@ Available Commands:
   help        Help about any command
 
 Flags:
-  -h, --help   help for linterly
+  -h, --help             help for linterly
+      --no-update-check  disable update check
 
 Use "linterly [command] --help" for more information about a command.
 ```
@@ -52,7 +53,8 @@ Linterly - コード行数チェックツール
   help        コマンドのヘルプを表示
 
 フラグ:
-  -h, --help   ヘルプを表示
+  -h, --help             ヘルプを表示
+      --no-update-check  バージョン更新チェックを無効化
 
 詳しくは "linterly [コマンド] --help" を参照してください。
 ```
@@ -86,6 +88,7 @@ linterly check [path] [flags]
 | `--count-mode` | | `all` | 行数カウントモード（`all` / `code_only`）。設定ファイルの `count_mode` を上書き |
 | `--ignore` | | | 除外パターン（複数回指定可能）。設定ファイルの `ignore` を上書き。パターンは常にプロジェクトルート基準で評価される |
 | `--no-default-excludes` | | | デフォルト除外リストを無効化する。設定ファイルの `default_excludes: false` と同等 |
+| `--no-update-check` | | | バージョン更新チェックを無効化する（グローバルフラグ、全コマンド共通） |
 
 #### 設定の優先順位
 
@@ -250,7 +253,58 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 - バージョン文字列はビルド時に `-ldflags` で設定される。開発時は `dev` が表示される
 - `v` プレフィックスは `git tag` のタグ名に含めることを前提とする
 
-## 3. 終了コード
+## 3. バージョン更新チェック
+
+全コマンド実行時に、バックグラウンドで最新バージョンをチェックする。更新がある場合、コマンド出力の末尾に stderr で通知を表示する。
+
+#### 出力例（go install 経由）
+
+```
+$ linterly check
+
+  WARN  src/handler.go (325 lines, limit: 300)
+
+Results: 0 error(s), 1 warning(s), 42 passed
+
+A new version of linterly is available: v0.3.1 → v0.4.0
+Run `go install github.com/ousiassllc/linterly/cmd/linterly@latest` to update.
+```
+
+#### 出力例（npm 経由）
+
+```
+$ linterly check
+
+  WARN  src/handler.go (325 lines, limit: 300)
+
+Results: 0 error(s), 1 warning(s), 42 passed
+
+A new version of linterly is available: v0.3.1 → v0.4.0
+Run `npm update -g @linterly/cli` to update.
+```
+
+#### 出力例（その他 / 経路不明）
+
+```
+A new version of linterly is available: v0.3.1 → v0.4.0
+Visit https://github.com/ousiassllc/linterly/releases/latest to update.
+```
+
+#### インストール経路の検出ロジック
+
+| 経路 | 検出方法 | 案内メッセージ |
+|------|---------|--------------|
+| npm | 実行バイナリのパスに `node_modules` を含む | `npm update -g @linterly/cli` |
+| go install | 実行バイナリのパスに `go/bin` を含む | `go install github.com/ousiassllc/linterly/cmd/linterly@latest` |
+| その他 | 上記に該当しない | GitHub Releases URL |
+
+#### 無効化
+
+- `--no-update-check` フラグ（全コマンド共通）
+- `LINTERLY_NO_UPDATE_CHECK` 環境変数（値が空でなければ無効化）
+- `Version` が `"dev"` かつ `debug.ReadBuildInfo()` でもバージョン取得不可の場合、チェックをスキップする
+
+## 4. 終了コード
 
 | コード | 意味 |
 |--------|------|
@@ -258,19 +312,20 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 | `1` | チェック失敗（error が 1 つ以上存在） |
 | `2` | 実行エラー（設定ファイル不正、引数エラー等） |
 
-## 4. 環境変数
+## 5. 環境変数
 
 | 変数 | 説明 | デフォルト |
 |------|------|-----------|
 | `LINTERLY_CONFIG` | 設定ファイルのパス（`--config` フラグと同等） | なし |
 | `LINTERLY_LANG` | メッセージの言語（`en` / `ja`）。`--lang` フラグと同等 | なし |
 | `NO_COLOR` | 設定するとカラー出力を無効化する（[no-color.org](https://no-color.org) 準拠） | なし |
+| `LINTERLY_NO_UPDATE_CHECK` | 設定するとバージョン更新チェックを無効化する（`--no-update-check` フラグと同等） | なし |
 
 - `--config` フラグが指定された場合は `LINTERLY_CONFIG` より優先される
 - `--lang` フラグが指定された場合は `LINTERLY_LANG` より優先される
 - 言語の優先順位: `--lang` フラグ > `LINTERLY_LANG` 環境変数 > 設定ファイルの `language` > デフォルト `en`
 
-## 5. 設定の優先順位（全体）
+## 6. 設定の優先順位（全体）
 
 ```
 CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
@@ -289,6 +344,7 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 除外パターン | `--ignore` | — | `ignore` | `[]` |
 | デフォルト除外 | `--no-default-excludes` | — | `default_excludes` | `true` |
 | カラー無効化 | — | `NO_COLOR` | — | 未設定（カラー有効） |
+| 更新チェック無効化 | `--no-update-check` | `LINTERLY_NO_UPDATE_CHECK` | — | 未設定（チェック有効） |
 
 ## 改訂履歴
 
@@ -298,3 +354,4 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 1.1 | 2026-02-08 | テキスト出力例のエラー件数を 2 に修正 | JSON 出力例・出力例の ERROR 件数との整合性確保 |
 | 1.2 | 2026-02-08 | warning(s) 表記修正、ignore 重複警告を 1 行表記に修正、version 出力例更新、--lang フラグと LINTERLY_LANG 環境変数を追加 | ドキュメント乖離レポート (#3) 対応 |
 | 1.3 | 2026-02-24 | check コマンドに設定上書きフラグ（--max-lines-per-file 等6種）を追加、設定ファイルなし実行の対応、優先順位の明記 | #22 CLI フラグによる設定値の上書き対応 |
+| 1.4 | 2026-03-03 | 3. バージョン更新チェックセクション追加（出力例・経路検出・無効化）、--no-update-check フラグと LINTERLY_NO_UPDATE_CHECK 環境変数を追加、優先順位表に更新チェック行を追加 | #30 バージョン更新チェック機能 |
