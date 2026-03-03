@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.3.3] - 2026-03-03
+
+### 🐛 Bug Fixes / バグ修正
+- `go install` 時に `debug.ReadBuildInfo` でバージョンをフォールバック取得するよう修正 / Fix version fallback to use `debug.ReadBuildInfo` for `go install` builds (#38)
+
 ## [v0.3.2] - 2026-03-03
 
 ### ✨ New Features / 新機能
