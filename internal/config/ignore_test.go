@@ -67,8 +67,7 @@ func TestIgnorePatterns_LinterlyIgnoreTakesPrecedence(t *testing.T) {
 	assert.Equal(t, []string{"vendor/"}, patterns)
 	// 両方定義されている場合は警告
 	require.Len(t, warnings, 1)
-	assert.Contains(t, warnings[0], ".linterlyignore")
-	assert.Contains(t, warnings[0], "takes precedence")
+	assert.Equal(t, "ignore.both_defined", warnings[0])
 }
 
 func TestIgnorePatterns_NeitherExists(t *testing.T) {

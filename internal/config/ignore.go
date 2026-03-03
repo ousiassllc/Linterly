@@ -23,7 +23,7 @@ func (c *Config) IgnorePatterns() (patterns []string, warnings []string, err err
 
 	// .linterlyignore が存在する場合
 	if len(c.Ignore) > 0 {
-		warnings = append(warnings, "Both .linterlyignore and ignore in config file are defined. .linterlyignore takes precedence. ignore in config file is ignored.")
+		warnings = append(warnings, "ignore.both_defined")
 	}
 	return ignorePatterns, warnings, nil
 }
