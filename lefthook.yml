@@ -6,6 +6,8 @@ pre-commit:
       run: golangci-lint run
     format:
       run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+    test:
+      run: go test ./...
 
 pre-push:
   commands:
