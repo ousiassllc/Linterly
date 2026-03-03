@@ -76,8 +76,22 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 			return nil
 		}
 
+		// 正規ファイル以外（シンボリックリンク等）はスキップ
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+
 		// ファイル
 		if shouldExclude(matcher, relFromRoot, false) {
+			return nil
+		}
+
+		// バイナリファイルはスキップ
+		binary, err := isBinary(path)
+		if err != nil {
+			return err
+		}
+		if binary {
 			return nil
 		}
 
