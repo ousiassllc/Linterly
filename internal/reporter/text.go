@@ -22,7 +22,7 @@ func (r *TextReporter) Report(report *analyzer.AnalysisReport, warnings []string
 
 	// ignore 重複警告を先に出力
 	for _, w := range warnings {
-		line := fmt.Sprintf("  WARN  %s", w)
+		line := fmt.Sprintf("  WARN  %s", r.translator.T(w))
 		if !noColor {
 			line = colorYellow(line)
 		}

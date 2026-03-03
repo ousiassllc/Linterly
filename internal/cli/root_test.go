@@ -36,6 +36,27 @@ func TestVersionCommand_Output(t *testing.T) {
 		versionCmd.Run(versionCmd, nil)
 	})
 
-	expected := "linterly 1.2.3 (" + runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH + ")\n"
+	expected := "linterly v1.2.3 (" + runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH + ")\n"
 	assert.Equal(t, expected, output)
+}
+
+func TestDisplayVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{name: "dev はそのまま", version: "dev", want: "dev"},
+		{name: "v プレフィックスなし", version: "1.0.0", want: "v1.0.0"},
+		{name: "v プレフィックスあり", version: "v2.1.0", want: "v2.1.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldVersion := Version
+			Version = tt.version
+			defer func() { Version = oldVersion }()
+
+			assert.Equal(t, tt.want, displayVersion())
+		})
+	}
 }

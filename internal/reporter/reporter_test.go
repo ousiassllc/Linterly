@@ -75,11 +75,28 @@ func TestTextReporter_WithWarnings(t *testing.T) {
 	reporter := NewReporter(FormatText, tr, &buf)
 
 	report := newTestReport()
-	warnings := []string{"Both .linterlyignore and ignore in config file are defined."}
+	warnings := []string{"ignore.both_defined"}
 	require.NoError(t, reporter.Report(report, warnings))
 
 	output := buf.String()
-	assert.Contains(t, output, "Both .linterlyignore")
+	assert.Contains(t, output, ".linterlyignore takes precedence")
+}
+
+func TestTextReporter_WithWarnings_Japanese(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+
+	tr, err := i18n.New("ja")
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	reporter := NewReporter(FormatText, tr, &buf)
+
+	report := newTestReport()
+	warnings := []string{"ignore.both_defined"}
+	require.NoError(t, reporter.Report(report, warnings))
+
+	output := buf.String()
+	assert.Contains(t, output, ".linterlyignore が優先されます")
 }
 
 func TestTextReporter_NoViolations(t *testing.T) {

@@ -38,10 +38,10 @@
 | npm パッケージ（メイン） | `@linterly/cli` | npm registry | 薄い JS ラッパー。`optionalDependencies` で各プラットフォーム用パッケージを参照。`npx @linterly/cli` で即実行可能 |
 | npm パッケージ（バイナリ） | `@linterly/darwin-arm64` 等 | npm registry | プラットフォーム別の Go バイナリを同梱。npm が現在の OS に合うものだけを自動インストール |
 | Go モジュール | `github.com/ousiassllc/linterly` | Go module proxy | `go install` で直接インストール可能 |
-| cargo crate | `linterly` | crates.io | Go バイナリをラップ。`build.rs` でバイナリをダウンロード |
-| pip パッケージ | `linterly` | PyPI | Go バイナリをラップ。プラットフォーム対応 wheel で配布 |
-| Docker イメージ | `ghcr.io/ousiassllc/linterly` | GitHub Container Registry | Alpine ベースの軽量イメージ |
-| GitHub Action | `ousiassllc/linterly-action` | GitHub Marketplace | Docker ベースまたはコンポジットアクション |
+| cargo crate | `linterly` | crates.io | Go バイナリをラップ。`build.rs` でバイナリをダウンロード（将来実装予定） |
+| pip パッケージ | `linterly` | PyPI | Go バイナリをラップ。プラットフォーム対応 wheel で配布（将来実装予定） |
+| Docker イメージ | `ghcr.io/ousiassllc/linterly` | GitHub Container Registry | Alpine ベースの軽量イメージ（将来実装予定） |
+| GitHub Action | `ousiassllc/linterly-action` | GitHub Marketplace | Docker ベースまたはコンポジットアクション（将来実装予定） |
 
 ### 配布方針
 
