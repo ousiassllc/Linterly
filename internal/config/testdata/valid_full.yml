@@ -11,3 +11,4 @@ ignore:
 
 default_excludes: false
 language: ja
+update_check: false

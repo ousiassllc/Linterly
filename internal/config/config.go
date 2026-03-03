@@ -52,6 +52,7 @@ count_mode: all
 
 # default_excludes: true
 # language: en
+# update_check: true
 `
 
 // Config は設定ファイルの内容を表す。
@@ -61,6 +62,7 @@ type Config struct {
 	Ignore          []string `yaml:"ignore" mapstructure:"ignore"`
 	DefaultExcludes bool     `yaml:"default_excludes" mapstructure:"default_excludes"`
 	Language        string   `yaml:"language" mapstructure:"language"`
+	UpdateCheck     bool     `yaml:"update_check" mapstructure:"update_check"`
 }
 
 // Rules はチェックルールの設定。
@@ -120,6 +122,7 @@ func defaultConfig() *Config {
 		Ignore:          []string{},
 		DefaultExcludes: true,
 		Language:        "en",
+		UpdateCheck:     true,
 	}
 }
 
@@ -160,6 +163,7 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("ignore", []string{})
 	v.SetDefault("default_excludes", true)
 	v.SetDefault("language", "en")
+	v.SetDefault("update_check", true)
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
