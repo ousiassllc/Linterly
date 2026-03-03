@@ -206,6 +206,13 @@ func TestT_NoViolations(t *testing.T) {
 	assert.Equal(t, "違反なし。すべてのチェックに合格しました。", trJa.T("check.no_violations"))
 }
 
+func TestIsSupportedLanguage(t *testing.T) {
+	assert.True(t, IsSupportedLanguage("en"))
+	assert.True(t, IsSupportedLanguage("ja"))
+	assert.False(t, IsSupportedLanguage("fr"))
+	assert.False(t, IsSupportedLanguage(""))
+}
+
 func TestResolveLanguage_FlagTakesPrecedence(t *testing.T) {
 	t.Setenv("LINTERLY_LANG", "ja")
 	assert.Equal(t, "en", ResolveLanguage("en"))

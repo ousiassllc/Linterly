@@ -17,6 +17,12 @@ var supportedLanguages = map[string]string{
 	"ja": "messages/ja.yml",
 }
 
+// IsSupportedLanguage は指定された言語コードがサポートされているか判定する。
+func IsSupportedLanguage(lang string) bool {
+	_, ok := supportedLanguages[lang]
+	return ok
+}
+
 // Translator はメッセージ翻訳を行う。
 type Translator struct {
 	lang     string

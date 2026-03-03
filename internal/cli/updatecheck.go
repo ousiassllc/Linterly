@@ -103,7 +103,7 @@ func resolveUpdateCheckLang(configLang string) string {
 	if langFlag != "" || os.Getenv("LINTERLY_LANG") != "" {
 		return lang
 	}
-	if configLang == "en" || configLang == "ja" {
+	if i18n.IsSupportedLanguage(configLang) {
 		return configLang
 	}
 	return lang

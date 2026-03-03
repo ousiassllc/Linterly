@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+
+	"github.com/ousiassllc/linterly/internal/i18n"
 )
 
 const (
@@ -248,7 +250,7 @@ func validate(cfg *Config) error {
 			Message: `"count_mode" must be "all" or "code_only"`,
 		})
 	}
-	if cfg.Language != "en" && cfg.Language != "ja" {
+	if !i18n.IsSupportedLanguage(cfg.Language) {
 		errs = append(errs, &ConfigError{
 			Code:    "validation.language",
 			Message: `"language" must be "en" or "ja"`,
