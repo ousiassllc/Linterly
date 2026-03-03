@@ -84,7 +84,7 @@ linterly check [path] [flags]
 | `--max-lines-per-directory` | | `2000` | ディレクトリ直下ファイルの合計最大行数。設定ファイルの `rules.max_lines_per_directory` を上書き |
 | `--warning-threshold` | | `10` | 警告閾値（%）。設定ファイルの `rules.warning_threshold` を上書き |
 | `--count-mode` | | `all` | 行数カウントモード（`all` / `code_only`）。設定ファイルの `count_mode` を上書き |
-| `--ignore` | | | 除外パターン（複数回指定可能）。設定ファイルの `ignore` を上書き |
+| `--ignore` | | | 除外パターン（複数回指定可能）。設定ファイルの `ignore` を上書き。パターンは常にプロジェクトルート基準で評価される |
 | `--no-default-excludes` | | | デフォルト除外リストを無効化する。設定ファイルの `default_excludes: false` と同等 |
 
 #### 設定の優先順位

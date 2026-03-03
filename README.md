@@ -106,6 +106,8 @@ lines > threshold     → ERROR (exit code 1)
 
 Use `.linterlyignore` with the same format as `.gitignore`. If both `.linterlyignore` and the `ignore` field in the config file are defined, `.linterlyignore` takes precedence.
 
+Patterns are always evaluated relative to the project root (where `.linterly.yml` or `.linterlyignore` is located), regardless of the target path. For example, `linterly check src/` evaluates patterns the same way as `linterly check .`.
+
 ## Git Hooks Integration
 
 ### Lefthook
