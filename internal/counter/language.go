@@ -92,7 +92,7 @@ var languages = []Language{
 	{
 		Name:              "CSS",
 		Extensions:        []string{".css"},
-		LineCommentStart:  []string{"//"},
+		LineCommentStart:  nil,
 		BlockCommentStart: "/*",
 		BlockCommentEnd:   "*/",
 	},

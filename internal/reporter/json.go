@@ -14,8 +14,9 @@ type JSONReporter struct {
 
 // jsonOutput は JSON 出力の構造体。
 type jsonOutput struct {
-	Results []jsonResult `json:"results"`
-	Summary jsonSummary  `json:"summary"`
+	Warnings []string     `json:"warnings"`
+	Results  []jsonResult `json:"results"`
+	Summary  jsonSummary  `json:"summary"`
 }
 
 type jsonResult struct {
@@ -37,8 +38,14 @@ type jsonSummary struct {
 // Report は分析結果を JSON 形式で出力する。
 // JSON 出力には pass を含む全結果を出力する。
 func (r *JSONReporter) Report(report *analyzer.AnalysisReport, warnings []string) error {
+	w := warnings
+	if w == nil {
+		w = []string{}
+	}
+
 	output := jsonOutput{
-		Results: make([]jsonResult, 0, len(report.Results)),
+		Warnings: w,
+		Results:  make([]jsonResult, 0, len(report.Results)),
 		Summary: jsonSummary{
 			Errors:   report.Errors,
 			Warnings: report.Warnings,

@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"io"
+	"os"
 
 	"github.com/ousiassllc/linterly/internal/analyzer"
 	"github.com/ousiassllc/linterly/internal/i18n"
@@ -25,5 +26,6 @@ func NewReporter(format string, translator *i18n.Translator, writer io.Writer) R
 	return &TextReporter{
 		writer:     writer,
 		translator: translator,
+		noColor:    os.Getenv("NO_COLOR") != "",
 	}
 }

@@ -57,7 +57,7 @@ func TestRunCheck_ConfigNotFound(t *testing.T) {
 	var exitErr *ExitError
 	require.True(t, errors.As(err, &exitErr))
 	assert.Equal(t, ExitRuntimeError, exitErr.Code)
-	assert.Contains(t, exitErr.Message, "no such file or directory")
+	assert.Contains(t, exitErr.Message, "Config file not found")
 }
 
 func TestRunCheck_MissingRulesSection(t *testing.T) {

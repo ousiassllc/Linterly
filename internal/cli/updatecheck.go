@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/ousiassllc/linterly/internal/config"
 	"github.com/ousiassllc/linterly/internal/i18n"
 	"github.com/ousiassllc/linterly/internal/updatecheck"
 )
@@ -74,7 +75,7 @@ func readUpdateCheckConfig() (disabled bool, lang string) {
 	if cfgPath != "" {
 		v.SetConfigFile(cfgPath)
 	} else {
-		for _, name := range []string{".linterly.yml", ".linterly.yaml"} {
+		for _, name := range config.DefaultConfigFileNames {
 			if _, err := os.Stat(name); err == nil {
 				v.SetConfigFile(name)
 				break
@@ -102,7 +103,7 @@ func resolveUpdateCheckLang(configLang string) string {
 	if langFlag != "" || os.Getenv("LINTERLY_LANG") != "" {
 		return lang
 	}
-	if configLang == "en" || configLang == "ja" {
+	if i18n.IsSupportedLanguage(configLang) {
 		return configLang
 	}
 	return lang

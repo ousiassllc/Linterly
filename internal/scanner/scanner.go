@@ -117,16 +117,6 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 		return nil, err
 	}
 
-	// ルートディレクトリも含める（ファイルがある場合）
-	if !dirSet["."] {
-		for _, f := range result.Files {
-			if f.Dir == "." {
-				result.Dirs = append([]string{"."}, result.Dirs...)
-				break
-			}
-		}
-	}
-
 	return result, nil
 }
 
