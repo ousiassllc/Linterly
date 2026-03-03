@@ -10,8 +10,10 @@ graph TD
     D["Counter Layer<br/>(行数カウント、コメント・空行認識、言語検出)"]
     E["Analyzer Layer<br/>(ルール評価、閾値判定、error/warn 分類)"]
     F["Reporter Layer<br/>(テキスト/JSON 出力、i18n メッセージ解決)"]
+    G["UpdateCheck Layer<br/>(GitHub API チェック、キャッシュ管理、<br/>インストール経路検出)"]
 
     A --> B --> C --> D --> E --> F
+    A -.-> G
 ```
 
 ※ 上記は概念的なデータフローを示す。実際のコンポーネント間の呼び出し関係はコンポーネント設計を参照。
@@ -56,11 +58,13 @@ linterly/
 │   ├── reporter/           # Reporter Layer: 出力
 │   │   ├── text.go         #   テキスト出力
 │   │   └── json.go         #   JSON 出力
-│   └── i18n/               # 国際化
-│       ├── i18n.go         #   メッセージ解決
-│       └── messages/       #   メッセージファイル
-│           ├── en.yml
-│           └── ja.yml
+│   ├── i18n/               # 国際化
+│   │   ├── i18n.go         #   メッセージ解決
+│   │   └── messages/       #   メッセージファイル
+│   │       ├── en.yml
+│   │       └── ja.yml
+│   └── updatecheck/        # バージョン更新チェック
+│       └── updatecheck.go  #   GitHub API チェック、キャッシュ管理、インストール経路検出
 ├── pkg/                    # 公開パッケージ（将来的にライブラリ利用を想定）
 ├── testdata/               # テスト用フィクスチャ
 ├── dist/                   # npm/cargo/pip ラッパー
@@ -159,3 +163,4 @@ graph TD
 | 1.1 | 2026-02-08 | ASCII 図を mermaid に置き換え | 可読性向上 |
 | 1.2 | 2026-02-08 | パッケージ構成に version.go を追加、レイヤー図に注記を追加 | CLI 仕様・コンポーネント設計との整合性確保 |
 | 1.3 | 2026-02-08 | Go バージョンを 1.24+ に更新 | ドキュメント乖離レポート (#3) 対応 |
+| 1.4 | 2026-03-03 | 全体構成図に UpdateCheck Layer を追加、パッケージ構成に updatecheck パッケージを追加 | #30 バージョン更新チェック機能 |
