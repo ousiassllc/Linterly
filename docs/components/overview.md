@@ -153,8 +153,8 @@ func DefaultExcludePatterns() []string
 ```go
 // FileEntry は走査で見つかったファイルの情報
 type FileEntry struct {
-    Path string // プロジェクトルートからの相対パス
-    Dir  string // ファイルが属するディレクトリ
+    Path string // ターゲットパスからの相対パス
+    Dir  string // ファイルが属するディレクトリ（相対パス）
 }
 
 // ScanResult は走査結果

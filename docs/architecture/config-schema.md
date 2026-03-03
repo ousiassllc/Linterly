@@ -149,6 +149,8 @@ testdata/
 | `!pattern` | 除外の取り消し（再include） | `!important.go` |
 | 末尾 `/` | ディレクトリのみにマッチ | `build/` |
 
+パターンは常にプロジェクトルート（`.linterlyignore` の配置場所）を基準に評価される。`linterly check src/` のようにサブディレクトリをターゲット指定した場合も、パターンの評価基準は変わらない。
+
 ### 2.3 優先ルール
 
 ```mermaid
