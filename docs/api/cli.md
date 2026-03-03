@@ -312,6 +312,7 @@ Visit https://github.com/ousiassllc/linterly/releases/latest to get the latest v
 
 - `--no-update-check` フラグ（全コマンド共通）
 - `LINTERLY_NO_UPDATE_CHECK` 環境変数（値が空でなければ無効化）
+- 設定ファイルの `update_check: false`
 
 ## 4. 終了コード
 
@@ -353,7 +354,7 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 除外パターン | `--ignore` | — | `ignore` | `[]` |
 | デフォルト除外 | `--no-default-excludes` | — | `default_excludes` | `true` |
 | カラー無効化 | — | `NO_COLOR` | — | 未設定（カラー有効） |
-| 更新チェック無効化 | `--no-update-check` | `LINTERLY_NO_UPDATE_CHECK` | — | 未設定（チェック有効） |
+| 更新チェック無効化 | `--no-update-check` | `LINTERLY_NO_UPDATE_CHECK` | `update_check` | 未設定（チェック有効） |
 
 ## 改訂履歴
 
@@ -365,3 +366,4 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 1.3 | 2026-02-24 | check コマンドに設定上書きフラグ（--max-lines-per-file 等6種）を追加、設定ファイルなし実行の対応、優先順位の明記 | #22 CLI フラグによる設定値の上書き対応 |
 | 1.4 | 2026-03-03 | 3. バージョン更新チェックセクション追加（出力例・経路検出・無効化）、--no-update-check フラグと LINTERLY_NO_UPDATE_CHECK 環境変数を追加、優先順位表に更新チェック行を追加 | #30 バージョン更新チェック機能 |
 | 1.5 | 2026-03-03 | 通知メッセージを i18n 対応に変更、バージョン不明時の出力例を追加、無効化条件からバージョン不明時スキップを削除 | #30 フィードバック反映 |
+| 1.6 | 2026-03-03 | 無効化に設定ファイルの `update_check: false` を追加、優先順位表に update_check 列を追加 | #30 設定ファイル対応 |

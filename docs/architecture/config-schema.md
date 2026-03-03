@@ -26,6 +26,9 @@ default_excludes: true           # デフォルト: true
 
 # 出力言語
 language: en                     # en | ja（デフォルト: en）
+
+# バージョン更新チェック
+update_check: true               # true | false（デフォルト: true）
 ```
 
 ### 1.2 フィールド定義
@@ -75,6 +78,16 @@ language: en                     # en | ja（デフォルト: en）
 - 対応値: `en`（英語）、`ja`（日本語）
 - 未対応の値が指定された場合はバリデーションエラー
 
+#### `update_check`
+
+| フィールド | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|------|-----------|------|
+| `update_check` | boolean | いいえ | `true` | バージョン更新チェックの有効/無効 |
+
+- `true`: コマンド実行時にバックグラウンドで最新バージョンをチェックする
+- `false`: チェックを無効化する
+- `--no-update-check` フラグおよび `LINTERLY_NO_UPDATE_CHECK` 環境変数が優先される
+
 ### 1.3 最小構成
 
 設定ファイルを使用する場合、`rules` セクションは必須だが、各フィールドはすべて省略可能（デフォルト値が適用される）。以下は明示的に値を指定した例:
@@ -94,6 +107,7 @@ rules:
 | `ignore` | `[]` |
 | `default_excludes` | `true` |
 | `language` | `en` |
+| `update_check` | `true` |
 
 ### 1.4 設定ファイルなしでの動作
 
@@ -199,6 +213,7 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | `--ignore` | `ignore` | `[]` |
 | `--no-default-excludes` | `default_excludes: false` | `true` |
 | `--lang` | `language` | `en` |
+| `--no-update-check` | `update_check: false` | `true` |
 
 #### 上書きルール
 
@@ -240,6 +255,7 @@ count_mode: all
 
 # default_excludes: true
 # language: en
+# update_check: true
 ```
 
 ## 改訂履歴
@@ -251,3 +267,4 @@ count_mode: all
 | 1.2 | 2026-02-08 | `max_lines_per_file` のデフォルト値を 400 → 300 に変更 | デフォルト値の見直し |
 | 1.3 | 2026-02-08 | 設定ファイル未発見時のエラーメッセージ例を追加 | ドキュメント乖離レポート (#3) 対応 |
 | 1.4 | 2026-02-24 | 設定ファイルなし動作の追加、CLI フラグによる上書きセクション追加、設定解決フロー図追加、バリデーションルールの rules 必須条件を条件付きに変更 | #22 CLI フラグによる設定値の上書き対応 |
+| 1.5 | 2026-03-03 | `update_check` フィールドを追加（完全な設定例・フィールド定義・最小構成・CLI フラグ対応表・init 生成例） | #30 バージョン更新チェック機能 |
