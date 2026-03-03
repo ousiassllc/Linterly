@@ -106,6 +106,8 @@ default_excludes: true           # デフォルト除外の有効/無効
 
 `.linterlyignore` を gitignore と同じ形式で記述できます。`.linterlyignore` の設定は設定ファイルの `ignore` より優先されます。
 
+パターンは常にプロジェクトルート（`.linterly.yml` または `.linterlyignore` の配置場所）を基準に評価されます。`linterly check src/` のようにサブディレクトリを指定した場合も、`linterly check .` と同じようにパターンが評価されます。
+
 ## Git Hooks との連携
 
 ### Lefthook

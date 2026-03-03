@@ -153,8 +153,8 @@ func DefaultExcludePatterns() []string
 ```go
 // FileEntry は走査で見つかったファイルの情報
 type FileEntry struct {
-    Path string // プロジェクトルートからの相対パス
-    Dir  string // ファイルが属するディレクトリ
+    Path string // ターゲットパスからの相対パス
+    Dir  string // ファイルが属するディレクトリ（相対パス）
 }
 
 // ScanResult は走査結果
@@ -172,6 +172,8 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error)
 1. `targetPath` を起点にディレクトリを再帰走査する
 2. デフォルト除外パターン（`default_excludes: true` の場合）を適用する
 3. ignore パターン（`.linterlyignore` または設定ファイルの `ignore`）を適用する
+   - パターンは常にプロジェクトルート（cwd）を基準に評価される
+   - サブディレクトリをターゲットに指定した場合も、パターンの評価基準は変わらない
 4. 除外されなかったファイル・ディレクトリを `ScanResult` に格納する
 
 ---

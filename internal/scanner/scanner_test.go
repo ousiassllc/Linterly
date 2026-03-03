@@ -148,6 +148,73 @@ func TestScan_SymlinksNotFollowed(t *testing.T) {
 	// filepath.Walk はシンボリックリンクをフォローしない
 }
 
+func TestScan_SubdirTargetWithPathIgnorePattern(t *testing.T) {
+	// Issue #27: サブディレクトリをターゲット指定した場合にパスを含む
+	// ignore パターンがマッチしない
+	tmpDir := t.TempDir()
+
+	// ディレクトリ構成: tmpDir/subdir/file.go, tmpDir/subdir/keep.go
+	subdir := filepath.Join(tmpDir, "subdir")
+	require.NoError(t, os.MkdirAll(subdir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(subdir, "file.go"), []byte("package sub"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(subdir, "keep.go"), []byte("package sub"), 0644))
+
+	// cwd をプロジェクトルートに変更
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	cfg := &config.Config{
+		DefaultExcludes: false,
+		Ignore:          []string{"subdir/file.go"},
+	}
+
+	// ルート指定: 除外される（修正前後どちらも成功）
+	result, err := Scan(".", cfg)
+	require.NoError(t, err)
+	paths := filePaths(result)
+	assert.NotContains(t, paths, "subdir/file.go", "ルート指定で除外されるべき")
+	assert.Contains(t, paths, "subdir/keep.go")
+
+	// サブディレクトリ指定: 除外されるべき（修正前は失敗）
+	result, err = Scan("subdir", cfg)
+	require.NoError(t, err)
+	paths = filePaths(result)
+	assert.NotContains(t, paths, "file.go", "サブディレクトリ指定でも除外されるべき")
+	assert.Contains(t, paths, "keep.go")
+}
+
+func TestScan_SubdirTargetWithDirIgnorePattern(t *testing.T) {
+	// Issue #27: ディレクトリパターンでも同様のバグが発生
+	tmpDir := t.TempDir()
+
+	// ディレクトリ構成: tmpDir/pkg/generated/code.go, tmpDir/pkg/src/app.go
+	generated := filepath.Join(tmpDir, "pkg", "generated")
+	src := filepath.Join(tmpDir, "pkg", "src")
+	require.NoError(t, os.MkdirAll(generated, 0755))
+	require.NoError(t, os.MkdirAll(src, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(generated, "code.go"), []byte("package gen"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "app.go"), []byte("package src"), 0644))
+
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { _ = os.Chdir(origDir) }()
+
+	cfg := &config.Config{
+		DefaultExcludes: false,
+		Ignore:          []string{"pkg/generated/"},
+	}
+
+	// サブディレクトリ指定で除外されるべき
+	result, err := Scan("pkg", cfg)
+	require.NoError(t, err)
+	paths := filePaths(result)
+	assert.NotContains(t, paths, "generated/code.go", "サブディレクトリ指定でも除外されるべき")
+	assert.Contains(t, paths, "src/app.go")
+}
+
 func filePaths(result *ScanResult) []string {
 	var paths []string
 	for _, f := range result.Files {
