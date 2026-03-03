@@ -29,8 +29,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// ファイルが既に存在するか確認
 	if _, err := os.Stat(filename); err == nil {
-		fmt.Print(translator.T("init.overwrite") + " ")
-		reader := bufio.NewReader(os.Stdin)
+		fmt.Fprint(cmd.OutOrStdout(), translator.T("init.overwrite")+" ")
+		reader := bufio.NewReader(cmd.InOrStdin())
 		answer, err := reader.ReadString('\n')
 		if err != nil {
 			return nil // 入力がない場合は上書きしない
@@ -42,13 +42,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if err := os.WriteFile(filename, []byte(config.DefaultConfigTemplate), 0644); err != nil {
 			return NewRuntimeError("failed to write config file: %v", err)
 		}
-		fmt.Println(translator.T("init.overwritten"))
+		fmt.Fprintln(cmd.OutOrStdout(), translator.T("init.overwritten"))
 		return nil
 	}
 
 	if err := os.WriteFile(filename, []byte(config.DefaultConfigTemplate), 0644); err != nil {
 		return NewRuntimeError("failed to write config file: %v", err)
 	}
-	fmt.Println(translator.T("init.created"))
+	fmt.Fprintln(cmd.OutOrStdout(), translator.T("init.created"))
 	return nil
 }

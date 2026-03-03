@@ -76,6 +76,14 @@ type Config struct {
 	DefaultExcludes bool     `yaml:"default_excludes" mapstructure:"default_excludes"`
 	Language        string   `yaml:"language" mapstructure:"language"`
 	UpdateCheck     bool     `yaml:"update_check" mapstructure:"update_check"`
+
+	ignoreCache *ignoreCacheEntry
+}
+
+type ignoreCacheEntry struct {
+	patterns []string
+	warnings []string
+	err      error
 }
 
 // Rules はチェックルールの設定。
@@ -116,6 +124,7 @@ func (c *Config) ApplyOverrides(o *Overrides) error {
 	}
 	if o.Ignore != nil {
 		c.Ignore = o.Ignore
+		c.ignoreCache = nil
 	}
 	if o.NoDefaultExcludes {
 		c.DefaultExcludes = false

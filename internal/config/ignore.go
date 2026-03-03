@@ -11,7 +11,23 @@ const linterlyIgnoreFile = ".linterlyignore"
 // IgnorePatterns は有効な除外パターン一覧を返す。
 // .linterlyignore が存在すればそちらを優先し、設定ファイルにも ignore が定義されている場合は warnings に警告を追加する。
 // .linterlyignore が存在しない場合は設定ファイルの ignore フィールドを返す。
+// 結果はキャッシュされ、2回目以降の呼び出しではキャッシュを返す。
 func (c *Config) IgnorePatterns() (patterns []string, warnings []string, err error) {
+	if c.ignoreCache != nil {
+		return c.ignoreCache.patterns, c.ignoreCache.warnings, c.ignoreCache.err
+	}
+
+	patterns, warnings, err = c.loadIgnorePatterns()
+	c.ignoreCache = &ignoreCacheEntry{
+		patterns: patterns,
+		warnings: warnings,
+		err:      err,
+	}
+	return patterns, warnings, err
+}
+
+// loadIgnorePatterns は除外パターンをファイルまたは設定から読み込む。
+func (c *Config) loadIgnorePatterns() (patterns []string, warnings []string, err error) {
 	ignorePatterns, fileErr := readLinterlyIgnore(linterlyIgnoreFile)
 	if fileErr != nil {
 		if !os.IsNotExist(fileErr) {

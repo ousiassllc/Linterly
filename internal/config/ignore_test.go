@@ -143,6 +143,63 @@ func TestReadLinterlyIgnore_WithNegationPattern(t *testing.T) {
 	assert.Equal(t, []string{"vendor/", "!vendor/important.go"}, patterns)
 }
 
+func TestIgnorePatterns_CacheReturnsSameResult(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cfg := &Config{
+		Ignore: []string{"vendor/**", "*.pb.go"},
+	}
+
+	// 1回目の呼び出し
+	patterns1, warnings1, err1 := cfg.IgnorePatterns()
+	require.NoError(t, err1)
+	assert.Equal(t, []string{"vendor/**", "*.pb.go"}, patterns1)
+	assert.Empty(t, warnings1)
+
+	// 2回目の呼び出し — キャッシュから同じ結果が返る
+	patterns2, warnings2, err2 := cfg.IgnorePatterns()
+	require.NoError(t, err2)
+	assert.Equal(t, patterns1, patterns2)
+	assert.Equal(t, warnings1, warnings2)
+}
+
+func TestIgnorePatterns_CacheClearedByApplyOverrides(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(origDir) }()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	cfg := &Config{
+		Rules: Rules{
+			MaxLinesPerFile:      300,
+			MaxLinesPerDirectory: 2000,
+			WarningThreshold:     10,
+		},
+		CountMode: CountModeAll,
+		Ignore:    []string{"vendor/**"},
+		Language:  "en",
+	}
+
+	// 1回目の呼び出しでキャッシュを生成
+	patterns1, _, err := cfg.IgnorePatterns()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"vendor/**"}, patterns1)
+
+	// ApplyOverrides で Ignore を変更 → キャッシュクリア
+	newIgnore := []string{"dist/**"}
+	require.NoError(t, cfg.ApplyOverrides(&Overrides{Ignore: newIgnore}))
+
+	// 新しいパターンが返る
+	patterns2, _, err := cfg.IgnorePatterns()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"dist/**"}, patterns2)
+}
+
 func TestIgnorePatterns_LinterlyIgnoreNoWarningWhenConfigIgnoreEmpty(t *testing.T) {
 	tmpDir := t.TempDir()
 	ignoreContent := "vendor/\n"

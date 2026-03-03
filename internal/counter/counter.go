@@ -51,6 +51,8 @@ func CountFile(path string, mode string) (*LineCount, error) {
 }
 
 // CountFiles は複数ファイルの行数を並行してカウントする。
+// 返されるスライスは入力の files スライスと同じインデックス順序を保証する。
+// つまり results[i] は files[i] のカウント結果に対応する。
 func CountFiles(files []string, mode string) ([]LineCount, error) {
 	type countResult struct {
 		lineCount LineCount
