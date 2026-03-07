@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	FormatText = "text"
-	FormatJSON = "json"
+	FormatText  = "text"
+	FormatJSON  = "json"
+	FormatJUnit = "junit"
 )
 
 // Reporter は結果出力のインターフェース。
@@ -22,6 +23,9 @@ type Reporter interface {
 func NewReporter(format string, translator *i18n.Translator, writer io.Writer) Reporter {
 	if format == FormatJSON {
 		return &JSONReporter{writer: writer}
+	}
+	if format == FormatJUnit {
+		return &JUnitReporter{writer: writer}
 	}
 	return &TextReporter{
 		writer:     writer,
