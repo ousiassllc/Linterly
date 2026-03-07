@@ -41,7 +41,7 @@ var checkCmd = &cobra.Command{
 
 func init() {
 	checkCmd.Flags().StringVarP(&configFile, "config", "c", "", "config file (default is .linterly.yml)")
-	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text or json)")
+	checkCmd.Flags().StringVarP(&format, "format", "f", reporter.FormatText, "output format (text, json, junit, checkstyle)")
 
 	// 設定上書きフラグ
 	checkCmd.Flags().IntVar(&flagMaxLinesPerFile, "max-lines-per-file", config.DefaultMaxLinesPerFile, "max lines per file")

@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	FormatText = "text"
-	FormatJSON = "json"
+	FormatText       = "text"
+	FormatJSON       = "json"
+	FormatJUnit      = "junit"
+	FormatCheckstyle = "checkstyle"
 )
 
 // Reporter は結果出力のインターフェース。
@@ -20,12 +22,18 @@ type Reporter interface {
 
 // NewReporter はフォーマット指定に応じた Reporter を返す。
 func NewReporter(format string, translator *i18n.Translator, writer io.Writer) Reporter {
-	if format == FormatJSON {
+	switch format {
+	case FormatJSON:
 		return &JSONReporter{writer: writer}
-	}
-	return &TextReporter{
-		writer:     writer,
-		translator: translator,
-		noColor:    os.Getenv("NO_COLOR") != "",
+	case FormatJUnit:
+		return &JUnitReporter{writer: writer}
+	case FormatCheckstyle:
+		return &CheckstyleReporter{writer: writer}
+	default:
+		return &TextReporter{
+			writer:     writer,
+			translator: translator,
+			noColor:    os.Getenv("NO_COLOR") != "",
+		}
 	}
 }
