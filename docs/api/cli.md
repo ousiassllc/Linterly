@@ -80,7 +80,7 @@ linterly check [path] [flags]
 | フラグ | 短縮 | デフォルト | 説明 |
 |--------|------|-----------|------|
 | `--config` | `-c` | `.linterly.yml` | 設定ファイルのパス |
-| `--format` | `-f` | `text` | 出力形式（`text` / `json`） |
+| `--format` | `-f` | `text` | 出力形式（`text` / `json` / `junit` / `checkstyle`） |
 | `--lang` | | | メッセージの言語（`en` / `ja`）。設定ファイルの `language` より優先 |
 | `--max-lines-per-file` | | `300` | 1ファイルあたりの最大行数。設定ファイルの `rules.max_lines_per_file` を上書き |
 | `--max-lines-per-directory` | | `2000` | ディレクトリ直下ファイルの合計最大行数。設定ファイルの `rules.max_lines_per_directory` を上書き |
@@ -199,6 +199,60 @@ $ linterly check
 
 - JSON 出力のキー名は常に英語（`language` 設定に依存しない）
 - `threshold` は `limit × (1 + warning_threshold / 100)` の計算値
+
+#### JUnit XML 出力例
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="file" tests="43" failures="1">
+    <testcase name="src/handler.go" classname="file">
+      <system-out>WARN src/handler.go (325 lines, limit: 300)</system-out>
+    </testcase>
+    <testcase name="src/service.go" classname="file">
+      <failure message="450 lines, limit: 300">ERROR src/service.go (450 lines, limit: 300)</failure>
+    </testcase>
+    <testcase name="src/utils.go" classname="file" />
+    <!-- ... pass は空の testcase -->
+  </testsuite>
+  <testsuite name="directory" tests="2" failures="1">
+    <testcase name="src/" classname="directory">
+      <failure message="2500 lines, limit: 2000">ERROR src/ (2500 lines, limit: 2000)</failure>
+    </testcase>
+    <testcase name="lib/" classname="directory" />
+  </testsuite>
+</testsuites>
+```
+
+- `<testsuite>` は `file` と `directory` の2つに分割
+- `error` → `<failure>` 要素で出力
+- `warn` → pass 扱い（`<failure>` なし）、内容は `<system-out>` に記載
+- `pass` → 空の `<testcase>`（自己閉じタグ）
+- メッセージは常に英語（`language` 設定に依存しない）
+
+#### checkstyle XML 出力例
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="4.3">
+  <file name="src/handler.go">
+    <error line="1" severity="warning" message="325 lines (limit: 300)" source="linterly" />
+  </file>
+  <file name="src/service.go">
+    <error line="1" severity="error" message="450 lines (limit: 300)" source="linterly" />
+  </file>
+  <file name="src/">
+    <error line="1" severity="error" message="2500 lines (limit: 2000)" source="linterly" />
+  </file>
+</checkstyle>
+```
+
+- violation（warn / error）のみ出力（pass は除外）
+- ディレクトリの違反も `<file>` として出力
+- `severity` は `"warning"` / `"error"` （checkstyle 標準に準拠）
+- `line` 属性は `1` 固定（ファイル全体が対象のため）
+- `source` 属性は `"linterly"` 固定
+- メッセージは常に英語（`language` 設定に依存しない）
 
 #### ignore 重複警告
 
@@ -367,3 +421,4 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 1.4 | 2026-03-03 | 3. バージョン更新チェックセクション追加（出力例・経路検出・無効化）、--no-update-check フラグと LINTERLY_NO_UPDATE_CHECK 環境変数を追加、優先順位表に更新チェック行を追加 | #30 バージョン更新チェック機能 |
 | 1.5 | 2026-03-03 | 通知メッセージを i18n 対応に変更、バージョン不明時の出力例を追加、無効化条件からバージョン不明時スキップを削除 | #30 フィードバック反映 |
 | 1.6 | 2026-03-03 | 無効化に設定ファイルの `update_check: false` を追加、優先順位表に update_check 列を追加 | #30 設定ファイル対応 |
+| 1.7 | 2026-03-07 | `--format` に `junit` / `checkstyle` を追加、JUnit XML / checkstyle XML の出力例・仕様を追加 | #43 JUnit XML / checkstyle XML 出力フォーマット追加 |

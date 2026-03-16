@@ -292,7 +292,7 @@ graph TD
 
 ### 2.6 reporter
 
-**責務**: 分析結果をユーザーに出力する。テキスト / JSON 形式に対応し、i18n メッセージを使用する。
+**責務**: 分析結果をユーザーに出力する。テキスト / JSON / JUnit XML / checkstyle XML 形式に対応し、i18n メッセージを使用する。
 
 **依存**: analyzer, i18n
 
@@ -302,6 +302,8 @@ graph TD
 |---------|------|
 | `text.go` | テキスト形式の出力。カラー対応（`NO_COLOR` 対応） |
 | `json.go` | JSON 形式の出力 |
+| `junit.go` | JUnit XML 形式の出力。`file` / `directory` で testsuite を分割 |
+| `checkstyle.go` | checkstyle XML 形式の出力。violation のみ出力 |
 
 #### 主要インターフェース
 
@@ -312,6 +314,7 @@ type Reporter interface {
 }
 
 // NewReporter はフォーマット指定に応じた Reporter を返す
+// format: "text", "json", "junit", "checkstyle"
 func NewReporter(format string, translator *i18n.Translator, writer io.Writer) Reporter
 ```
 
@@ -569,3 +572,4 @@ sequenceDiagram
 | 1.4 | 2026-02-24 | cli: 設定上書きフラグを追加、config: Overrides 型と ApplyOverrides メソッドを追加、Load の設定ファイルなし動作を更新、シーケンス図に ApplyOverrides ステップを追加 | #22 CLI フラグによる設定値の上書き対応 |
 | 1.5 | 2026-03-03 | 2.8 updatecheck コンポーネント追加（Checker・CheckResult・InstallMethod・キャッシュ・CLI 呼び出しパターン）、コンポーネント構成図に UC 追加、シーケンス図に非同期チェック追加 | #30 バージョン更新チェック機能 |
 | 1.6 | 2026-03-03 | updatecheck: i18n 依存追加、CheckResult に VersionUnknown フィールド追加、バージョン不明時は毎回通知に変更、i18n メッセージ例に update.* キーを追加 | #30 フィードバック反映 |
+| 1.7 | 2026-03-07 | reporter: junit.go / checkstyle.go を追加、NewReporter のフォーマット一覧を更新、責務説明に JUnit XML / checkstyle XML を追加 | #43 JUnit XML / checkstyle XML 出力フォーマット追加 |

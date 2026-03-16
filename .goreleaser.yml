@@ -33,4 +33,7 @@ checksum:
   algorithm: sha256
 
 changelog:
-  disable: true
+  sort: asc
+  filters:
+    exclude:
+      - ".*"
