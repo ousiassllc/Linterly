@@ -180,44 +180,62 @@ func countCodeOnly(r io.Reader, lang *Language) (total int, code int, err error)
 		total++
 		trimmed := strings.TrimSpace(string(lineBytes))
 
-		// 空行チェック
-		if trimmed == "" {
-			continue
-		}
-
-		// 対応言語がない場合、すべてコード行として扱う
+		// 対応言語がない場合、空行以外はすべてコード行として扱う
 		if lang == nil {
+			if trimmed != "" {
+				code++
+			}
+			continue
+		}
+
+		if hasCode(trimmed, lang, isPython, &inBlock) {
 			code++
-			continue
 		}
-
-		// ブロックコメント内にいる場合
-		if inBlock {
-			if containsBlockEnd(trimmed, lang, isPython) {
-				inBlock = false
-			}
-			continue
-		}
-
-		// ブロックコメント開始チェック
-		if lang.BlockCommentStart != "" && containsBlockStart(trimmed, lang, isPython) {
-			// 同じ行で開始・終了する場合
-			if sameLineBlockComment(trimmed, lang, isPython) {
-				continue
-			}
-			inBlock = true
-			continue
-		}
-
-		// 行コメントチェック
-		if isLineComment(trimmed, lang) {
-			continue
-		}
-
-		code++
 	}
 
 	return total, code, nil
+}
+
+// hasCode は 1 行（TrimSpace 済み）にコードが含まれるかを判定し、ブロックコメントの継続状態を inBlock に反映する。
+// ブロックコメントの終了後・開始と終了が同じ行にある場合は、残りの文字列を行頭として評価し直す
+// （例: "/* c */ x := 1" や "end */ y := 2" はコード行）。
+func hasCode(trimmed string, lang *Language, isPython bool, inBlock *bool) bool {
+	rest := trimmed
+	for rest != "" {
+		// ブロックコメント内: 終了まで読み飛ばし、残りを評価し直す
+		if *inBlock {
+			after, closed := cutBlockEnd(rest, lang, isPython)
+			if !closed {
+				return false
+			}
+			*inBlock = false
+			rest = strings.TrimSpace(after)
+			continue
+		}
+
+		// ブロックコメント開始（行頭のみ認識する）
+		if delim := blockStart(rest, lang, isPython); delim != "" {
+			afterStart := rest[len(delim):]
+			end := lang.BlockCommentEnd
+			if isPython {
+				end = delim
+			}
+			_, after, found := strings.Cut(afterStart, end)
+			if !found {
+				*inBlock = true
+				return false
+			}
+			rest = strings.TrimSpace(after)
+			continue
+		}
+
+		// 行コメントは行末までコメント
+		if isLineComment(rest, lang) {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 // isLineComment は行が行コメントであるかを判定する。
@@ -230,42 +248,28 @@ func isLineComment(trimmed string, lang *Language) bool {
 	return false
 }
 
-// containsBlockStart は行がブロックコメント開始を含むかを判定する。
-func containsBlockStart(trimmed string, lang *Language, isPython bool) bool {
+// blockStart は行頭にあるブロックコメント開始記号を返す。なければ空文字列を返す。
+func blockStart(trimmed string, lang *Language, isPython bool) string {
 	if isPython {
-		return strings.HasPrefix(trimmed, `"""`) || strings.HasPrefix(trimmed, `'''`)
-	}
-	return strings.HasPrefix(trimmed, lang.BlockCommentStart)
-}
-
-// containsBlockEnd は行がブロックコメント終了を含むかを判定する。
-func containsBlockEnd(trimmed string, lang *Language, isPython bool) bool {
-	if isPython {
-		// 開始行と同じ行の場合は sameLineBlockComment で処理済み
-		// ここでは終了行のみチェック
-		return strings.HasSuffix(trimmed, `"""`) || strings.HasSuffix(trimmed, `'''`)
-	}
-	return strings.Contains(trimmed, lang.BlockCommentEnd)
-}
-
-// sameLineBlockComment は同じ行でブロックコメントが開始・終了するかを判定する。
-func sameLineBlockComment(trimmed string, lang *Language, isPython bool) bool {
-	if isPython {
-		// """...""" or '''...'''
 		for _, delim := range []string{`"""`, `'''`} {
 			if strings.HasPrefix(trimmed, delim) {
-				rest := trimmed[len(delim):]
-				if strings.Contains(rest, delim) {
-					return true
-				}
+				return delim
 			}
 		}
-		return false
+		return ""
 	}
+	if lang.BlockCommentStart != "" && strings.HasPrefix(trimmed, lang.BlockCommentStart) {
+		return lang.BlockCommentStart
+	}
+	return ""
+}
 
-	if strings.HasPrefix(trimmed, lang.BlockCommentStart) {
-		rest := trimmed[len(lang.BlockCommentStart):]
-		return strings.Contains(rest, lang.BlockCommentEnd)
+// cutBlockEnd はブロックコメント内の行から終了記号を探し、終了記号より後ろの文字列を返す。
+// Python の docstring は従来どおり、行末が終了記号で終わる場合のみ終了とみなす。
+func cutBlockEnd(trimmed string, lang *Language, isPython bool) (after string, closed bool) {
+	if isPython {
+		return "", strings.HasSuffix(trimmed, `"""`) || strings.HasSuffix(trimmed, `'''`)
 	}
-	return false
+	_, after, closed = strings.Cut(trimmed, lang.BlockCommentEnd)
+	return after, closed
 }
