@@ -3,9 +3,12 @@ package counter
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ousiassllc/linterly/internal/config"
@@ -188,4 +191,41 @@ func TestCountCodeOnly_FromReader(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, total)
 	assert.Equal(t, 2, code)
+}
+
+func TestCountFiles_ConcurrencyIsBounded(t *testing.T) {
+	// 同時に処理されるファイル数が maxWorkers を超えないこと（fd 枯渇の回帰テスト）
+	files := make([]string, 200)
+	for i := range files {
+		files[i] = fmt.Sprintf("f%d.txt", i)
+	}
+
+	var current, peak atomic.Int32
+	countFn := func(path, _ string) (*LineCount, error) {
+		n := current.Add(1)
+		defer current.Add(-1)
+		for {
+			p := peak.Load()
+			if n <= p || peak.CompareAndSwap(p, n) {
+				break
+			}
+		}
+		runtime.Gosched()
+		return &LineCount{Path: path}, nil
+	}
+
+	results, err := countFiles(files, config.CountModeAll, countFn)
+	require.NoError(t, err)
+	require.Len(t, results, len(files))
+	for i, r := range results {
+		assert.Equal(t, files[i], r.Path, "入力順が維持されること")
+	}
+	assert.LessOrEqual(t, int(peak.Load()), maxWorkers)
+	assert.Positive(t, int(peak.Load()))
+}
+
+func TestCountFiles_Empty(t *testing.T) {
+	results, err := CountFiles(nil, config.CountModeAll)
+	require.NoError(t, err)
+	assert.Empty(t, results)
 }

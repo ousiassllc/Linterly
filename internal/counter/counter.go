@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -51,53 +52,52 @@ func CountFile(path string, mode string) (*LineCount, error) {
 	return result, nil
 }
 
+// maxWorkers は CountFiles が同時に処理するファイル数の上限。
+// ファイルごとに goroutine を起動すると fd 上限（ulimit -n）を超えるため、CPU 数に比例した固定数に抑える。
+var maxWorkers = runtime.NumCPU()
+
 // CountFiles は複数ファイルの行数を並行してカウントする。
+// 同時に処理するファイル数は maxWorkers 以下に制限される。
 // 返されるスライスは入力の files スライスと同じインデックス順序を保証する。
 // つまり results[i] は files[i] のカウント結果に対応する。
 func CountFiles(files []string, mode string) ([]LineCount, error) {
-	type countResult struct {
-		lineCount LineCount
-		err       error
-		index     int
-	}
+	return countFiles(files, mode, CountFile)
+}
 
+// countFiles は countFn をワーカープールで並行実行する。CountFiles の実体（テストで countFn を差し替える）。
+func countFiles(files []string, mode string, countFn func(string, string) (*LineCount, error)) ([]LineCount, error) {
 	results := make([]LineCount, len(files))
-	ch := make(chan countResult, len(files))
+	errs := make([]error, len(files))
+
+	workers := min(maxWorkers, len(files))
+	indexes := make(chan int)
 	var wg sync.WaitGroup
-
-	for i, path := range files {
+	for range workers {
 		wg.Add(1)
-		go func(idx int, p string) {
+		go func() {
 			defer wg.Done()
-			lc, err := CountFile(p, mode)
-			if err != nil {
-				ch <- countResult{err: err, index: idx}
-				return
+			for i := range indexes {
+				lc, err := countFn(files[i], mode)
+				if err != nil {
+					errs[i] = err
+					continue
+				}
+				results[i] = *lc
 			}
-			ch <- countResult{lineCount: *lc, index: idx}
-		}(i, path)
+		}()
 	}
+	for i := range files {
+		indexes <- i
+	}
+	close(indexes)
+	wg.Wait()
 
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
-	var firstErr error
-	for cr := range ch {
-		if cr.err != nil {
-			if firstErr == nil {
-				firstErr = cr.err
-			}
-			continue
+	// 入力順で最初のエラーを返す
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
 		}
-		results[cr.index] = cr.lineCount
 	}
-
-	if firstErr != nil {
-		return nil, firstErr
-	}
-
 	return results, nil
 }
 
