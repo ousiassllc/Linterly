@@ -1,5 +1,33 @@
 # Changelog
 
+## [Unreleased]
+
+### ✨ New Features / 新機能
+- `--format junit` / `--format checkstyle` を追加（JUnit XML・checkstyle XML 出力） / Add `--format junit` and `--format checkstyle` output formats (#43)
+- check がファイルと複数パスを引数に取れるように変更（`linterly check {staged_files}` が動作する） / `check` now accepts files and multiple paths, so `linterly check {staged_files}` works (#49)
+
+### 🐛 Bug Fixes / バグ修正
+- ファイルを直接指定すると何も検査されず exit 0 になる問題を修正 / Fix `check <file>` scanning nothing and exiting 0 (#49)
+- 読み取れないファイルがあっても走査全体を失敗させず、stderr に `warning: skipped <path>: <理由>` を出力してスキップするよう修正 / Skip unreadable files with a `warning: skipped <path>: <reason>` on stderr instead of failing the whole run (#52)
+- 未知の `--format` 値を使用エラー（終了コード 2）にするよう修正 / Treat an unknown `--format` value as a usage error (exit code 2) (#50)
+- `CountFiles` を上限付きワーカープールにし、大規模リポジトリでの `too many open files` を修正 / Bound `CountFiles` with a worker pool to fix `too many open files` on large repositories (#48)
+- 1MB を超える長い行を含むファイルで check 全体が失敗する問題を修正 / Fix check failing on files containing lines longer than 1MB (#51)
+- `count_mode: code_only` でブロックコメントと同じ行のコードがコード行に数えられない問題を修正 / Fix `code_only` dropping code that shares a line with a block comment (#53)
+- 更新チェックがメインコマンド終了後に最大 1 秒だけ完了を待つよう修正し、短時間で終わるコマンドでもキャッシュ保存と通知が行われるようにした / Wait up to 1 second for the update check after the main command so short commands still populate the cache and show the notice (#66)
+
+### 🔧 Improvements / 改善
+- 更新チェックの設定読み込みを `config.LoadUpdateSettings` に集約し、`config.Load` と同じ探索規則に統一 / Consolidate update-check settings loading into `config.LoadUpdateSettings`, sharing `config.Load`'s lookup rules (#56)
+- init の重複書き込みと未使用の `DetectInstallMethod` を整理 / Remove duplicate write in `init` and the unused `DetectInstallMethod` (#55)
+
+### 🧪 Tests / テスト
+- `--format junit` / `checkstyle` の CLI 経路と `NewReporter` 配線のテストを追加 / Add tests for the `--format junit` / `checkstyle` CLI path and `NewReporter` wiring (#68)
+- 言語別コメント認識（F-021〜F-028）の `code_only` テストを追加 / Add `code_only` comment-recognition tests for each language (F-021 to F-028) (#69)
+
+### 📝 Documentation / ドキュメント
+- JUnit XML / checkstyle XML 出力フォーマットの仕様を追加 / Add specification for JUnit XML and checkstyle XML output formats (#43)
+- 仕様書・README を実装に合わせて更新（check のパス引数、ヘルプ出力、JSON `warnings`、更新チェックの挙動、パッケージ構成、Go 1.26、CSS/SCSS コメント、Git Hooks 例、README の出力例・format・更新チェック記載など） / Sync specs and READMEs with the implementation (`check` path arguments, help output, JSON `warnings`, update-check behavior, package layout, Go 1.26, CSS/SCSS comments, Git Hooks examples, README output examples/formats/update check, etc.) (#57, #58, #59, #61, #62, #63, #64, #65)
+- CHANGELOG の誤記（v0.3.0 のフラグ名、v0.3.2 の文字化け）を修正 / Fix CHANGELOG typos (v0.3.0 flag names, v0.3.2 garbled text) (#60)
+
 ## [v0.3.3] - 2026-03-03
 
 ### 🐛 Bug Fixes / バグ修正
@@ -26,7 +54,7 @@
 - countAll/countCodeOnly の引数を io.Reader に変更 / Change countAll/countCodeOnly parameter from *os.File to io.Reader (#35)
 - TextReporter の NO_COLOR 判定を初期化時に移動 / Move NO_COLOR check to TextReporter initialization (#35)
 - JSONReporter に warnings フィールドを追加 / Add warnings field to JSONReporter output (#35)
-- scanner のデッドコード（ルートディレクトリ補完ブロック）を削除 / Remove dead code for root directory补completion in scanner (#35)
+- scanner のデッドコード（ルートディレクトリ補完ブロック）を削除 / Remove dead code for root directory completion block in scanner (#35)
 
 ### 📝 Documentation / ドキュメント
 - ドキュメント乖離を修正（Config/Checker 定義・配布形態・設定ファイル） / Fix documentation drift for Config/Checker definitions, distribution, and config files (#34)
@@ -49,7 +77,7 @@ CLI フラグによる設定値の上書きと設定ファイルなしでの実�
 Add config override via CLI flags and support running without a config file.
 
 ### ✨ 新機能 / New Features
-- check コマンドに設定上書きフラグ 6 種を追加（--max-lines-per-file, --max-lines-per-func, --count-mode, --threshold, --exclude, --include） / Add 6 config override flags to check command (#22)
+- check コマンドに設定上書きフラグ 6 種を追加（--max-lines-per-file, --max-lines-per-directory, --warning-threshold, --count-mode, --ignore, --no-default-excludes） / Add 6 config override flags to check command (#22)
 - Overrides 型と ApplyOverrides メソッドを追加し、設定ファイルなしでの実行に対応 / Add Overrides type and ApplyOverrides method to support running without config file (#22)
 
 ### 🐛 バグ修正 / Bug Fixes
