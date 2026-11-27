@@ -134,3 +134,30 @@ func TestCountCodeOnly_Ruby_BlockNotAtLineStart(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, code)
 }
+
+// コードの後ろで始まり複数行に続くブロックコメントは、継続行をコード行に数えない（#75, #79）。
+func TestCountCodeOnly_BlockCommentStartsAfterCode(t *testing.T) {
+	tests := []struct {
+		name  string
+		file  string
+		input string
+		code  int
+	}{
+		{"Go", "a.go", "package a\nx := 1 /* start\n comment\n comment2\n*/\ny := 2\n// c\n\n/* c */ z := 3\nend\n", 5},
+		{"HTML", "a.html", "<p>\n<p> <!-- start\n comment\n-->\n<b>x</b>\n", 3},
+		{"CSS", "a.css", "a { color: red } /* start\n comment\n*/\nb { color: blue }\n", 2},
+		{"Java", "A.java", "int x = 1; /* start\n comment\n*/ int y = 2;\n", 2},
+		{"同一行で閉じるブロックの後に開始", "a.go", "x := 1 /* a */ /* b\n c\n*/\ny := 2\n", 2},
+		{"文字列リテラル内の記号は開始とみなさない", "a.go", "p := \"src/*\"\nq := `a/*`\nr := '/'\nz := 1\n", 4},
+		{"行コメント内の記号は開始とみなさない", "a.go", "x := 1 // see /* here\ny := 2\n", 2},
+		{"閉じていない引用符は文字列とみなさない", "a.rs", "fn f<'a>(x: &'a str) { /* start\n comment\n*/\n}\n", 2},
+		{"Python は従来どおり", "a.py", "x = 1  # /* c\ny = 2\n", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, code, err := countCodeOnly(strings.NewReader(tt.input), DetectLanguage(tt.file))
+			require.NoError(t, err)
+			assert.Equal(t, tt.code, code)
+		})
+	}
+}

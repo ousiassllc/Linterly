@@ -124,3 +124,98 @@ func TestScan_UnreadableEntriesAreSkipped(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{denied, filepath.Join(tmpDir, "locked")}, skipped)
 }
+
+func TestScanPaths_SymlinkTargets(t *testing.T) {
+	// Issue #77: 指定パスがシンボリックリンクの場合はリンク先を走査する
+	tmpDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "src"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "src", "a.go"), []byte("package a\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "top.go"), []byte("package t\n"), 0644))
+	require.NoError(t, os.Symlink("src", filepath.Join(tmpDir, "srclnk")))
+	require.NoError(t, os.Symlink("top.go", filepath.Join(tmpDir, "toplnk.go")))
+
+	t.Chdir(tmpDir)
+	cfg := &config.Config{DefaultExcludes: false}
+
+	t.Run("ディレクトリのリンクは実体ディレクトリと同じ結果", func(t *testing.T) {
+		got, err := ScanPaths([]string{"srclnk"}, cfg)
+		require.NoError(t, err)
+		want, err := ScanPaths([]string{"src"}, cfg)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a.go"}, filePaths(got))
+		assert.Equal(t, filePaths(want), filePaths(got))
+	})
+
+	t.Run("末尾スラッシュ付きでも走査される", func(t *testing.T) {
+		got, err := ScanPaths([]string{"srclnk/"}, cfg)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a.go"}, filePaths(got))
+	})
+
+	t.Run("ファイルのリンクは実体ファイルを検査する", func(t *testing.T) {
+		got, err := ScanPaths([]string{"toplnk.go"}, cfg)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"top.go"}, filePaths(got))
+	})
+
+	t.Run("走査中に出会うリンクは辿らない", func(t *testing.T) {
+		got, err := ScanPaths([]string{"."}, cfg)
+		require.NoError(t, err)
+		paths := filePaths(got)
+		sort.Strings(paths)
+		assert.Equal(t, []string{"src/a.go", "top.go"}, paths)
+	})
+
+	t.Run("リンク先が存在しない場合はエラー", func(t *testing.T) {
+		require.NoError(t, os.Symlink("nowhere", filepath.Join(tmpDir, "dangling")))
+		_, err := ScanPaths([]string{"dangling"}, cfg)
+		assert.Error(t, err)
+	})
+}
+
+func TestScanPaths_ExcludedDirectoryTarget(t *testing.T) {
+	// Issue #76: 除外ディレクトリの直接指定は、その配下のファイル指定と同じく何も走査しない
+	tmpDir := t.TempDir()
+	for _, f := range []string{"vendor/x.go", "src/node_modules/p/i.js", "src/ok.go", "gen/g.go"} {
+		require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(tmpDir, f)), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, f), []byte("x\n"), 0644))
+	}
+
+	t.Chdir(tmpDir)
+	cfg := &config.Config{DefaultExcludes: true, Ignore: []string{"gen/"}}
+
+	tests := []struct {
+		name   string
+		target string
+		want   []string
+	}{
+		{"除外ディレクトリ", "vendor", nil},
+		{"除外ディレクトリ内のファイル", "vendor/x.go", nil},
+		{"ネストした除外ディレクトリ", "src/node_modules", nil},
+		{"除外ディレクトリの子ディレクトリ", "src/node_modules/p", nil},
+		{"ignore で除外したディレクトリ", "gen", nil},
+		{"除外されないディレクトリ", "src", []string{"ok.go"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ScanPaths([]string{tt.target}, cfg)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, filePaths(result))
+		})
+	}
+}
+
+func TestScanPaths_SymlinkTargetUnderSymlinkedRoot(t *testing.T) {
+	// プロジェクトルート自体がシンボリックリンク経由でも、リンク先のルート相対パスは変わらない
+	realRoot := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(realRoot, "src"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(realRoot, "src", "a.go"), []byte("package a\n"), 0644))
+	require.NoError(t, os.Symlink("src", filepath.Join(realRoot, "srclnk")))
+	linkRoot := filepath.Join(t.TempDir(), "root")
+	require.NoError(t, os.Symlink(realRoot, linkRoot))
+
+	t.Chdir(linkRoot)
+	result, err := ScanPaths([]string{"srclnk", "src/a.go"}, &config.Config{DefaultExcludes: false})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"src/a.go"}, filePaths(result))
+}

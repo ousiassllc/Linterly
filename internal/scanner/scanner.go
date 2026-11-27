@@ -43,6 +43,8 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error) {
 //   - それ以外（ファイルの指定、複数パスの指定）: カレントディレクトリ（プロジェクトルート）
 //
 // ファイルを直接指定した場合も、除外パターン・バイナリ判定は通常どおり適用する。
+// 除外対象のディレクトリを直接指定した場合は、ファイル指定と同様に何も走査しない。
+// 指定パスがシンボリックリンクの場合はリンク先を走査する（走査中に出会うリンクは辿らない）。
 // 同じファイルが複数回見つかった場合は 1 件として扱う。
 // 読み取れないエントリは走査を中断せず、ScanResult.Skipped に記録して続行する。
 // 指定パス自体が存在しない場合はエラーを返す。
@@ -60,7 +62,11 @@ func ScanPaths(targetPaths []string, cfg *config.Config) (*ScanResult, error) {
 
 	absTargets := make([]string, len(targetPaths))
 	for i, p := range targetPaths {
-		absTargets[i], err = filepath.Abs(p)
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return nil, err
+		}
+		absTargets[i], err = resolveTarget(abs, projectRoot)
 		if err != nil {
 			return nil, err
 		}
@@ -112,17 +118,20 @@ func (s *scan) walk(absTarget string) error {
 			return nil
 		}
 
-		// 指定ディレクトリ自体はスキップ
-		if path == absTarget && info.IsDir() {
-			return nil
-		}
-
 		// プロジェクトルート相対パス（ignore マッチング用）
 		relFromRoot, err := filepath.Rel(s.projectRoot, path)
 		if err != nil {
 			return err
 		}
 		relFromRoot = filepath.ToSlash(relFromRoot)
+
+		// 指定ディレクトリ自体は登録しない。除外対象（自身または親が除外）の場合は配下も走査しない
+		if path == absTarget && info.IsDir() {
+			if s.targetDirExcluded(relFromRoot) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 
 		if info.IsDir() {
 			if shouldExclude(s.matcher, relFromRoot, true) {
@@ -182,6 +191,37 @@ func (s *scan) walk(absTarget string) error {
 
 		return nil
 	})
+}
+
+// targetDirExcluded は直接指定されたディレクトリ（プロジェクトルート相対パス）が除外対象かを返す。
+// ファイルを直接指定した場合と同様に、ディレクトリ自身と親ディレクトリの除外パターンを評価する。
+// プロジェクトルート自身とルート外のディレクトリには除外パターンを適用しない。
+func (s *scan) targetDirExcluded(relPath string) bool {
+	if relPath == "." || relPath == ".." || strings.HasPrefix(relPath, "../") {
+		return false
+	}
+	return shouldExclude(s.matcher, relPath, true) || s.parentExcluded(relPath)
+}
+
+// resolveTarget は指定パスがシンボリックリンクの場合に、リンク先の実体パスへ解決する。
+// 実体がプロジェクトルート配下にある場合は、ルートがシンボリックリンク経由でも
+// ルート相対パスが変わらないよう projectRoot からのパスで返す。
+// リンクでないパスはそのまま返す。リンク先が存在しない場合はエラーを返す。
+func resolveTarget(absTarget, projectRoot string) (string, error) {
+	info, err := os.Lstat(absTarget)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		return absTarget, nil // 存在しない場合のエラーは走査時に報告する
+	}
+	resolved, err := filepath.EvalSymlinks(absTarget)
+	if err != nil {
+		return "", err
+	}
+	if realRoot, err := filepath.EvalSymlinks(projectRoot); err == nil {
+		if rel, err := filepath.Rel(realRoot, resolved); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return filepath.Join(projectRoot, rel), nil
+		}
+	}
+	return resolved, nil
 }
 
 // parentExcluded は relPath（プロジェクトルート相対）の親ディレクトリのいずれかが除外対象かを返す。
