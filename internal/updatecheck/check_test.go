@@ -108,6 +108,38 @@ func TestCheck_CacheHit(t *testing.T) {
 	assert.False(t, apiCalled, "API should not be called when cache is valid")
 }
 
+// API 応答が遅くても、成功すれば Check 完了時点でキャッシュが保存される。
+func TestCheck_WritesCacheAfterSlowAPI(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(githubRelease{TagName: "v0.4.0"})
+	}))
+	defer server.Close()
+
+	c := newTestChecker(t, "v0.3.1", server.URL)
+	c.executablePath = func() (string, error) { return "/usr/local/bin/linterly", nil }
+
+	done := make(chan *CheckResult, 1)
+	go func() {
+		result, _ := c.Check(context.Background())
+		done <- result
+	}()
+
+	_, err := c.readCache()
+	require.Error(t, err, "cache must not exist before the API responds")
+
+	close(release)
+	result := <-done
+	require.NotNil(t, result)
+	assert.True(t, result.UpdateAvailable)
+
+	entry, err := c.readCache()
+	require.NoError(t, err)
+	assert.Equal(t, "v0.4.0", entry.LatestVersion)
+}
+
 func TestCheck_CacheExpired(t *testing.T) {
 	apiCalled := false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
