@@ -79,6 +79,11 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// 出力フォーマットの検証（走査前）
+	if !reporter.IsSupportedFormat(format) {
+		return NewRuntimeError("%s", translator.T("err.unsupported_format", format, strings.Join(reporter.SupportedFormats, ", ")))
+	}
+
 	// CLI フラグによる設定上書き
 	overrides := buildOverrides(cmd)
 	if err := cfg.ApplyOverrides(overrides); err != nil {

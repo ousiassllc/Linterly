@@ -18,6 +18,7 @@ validation.count_mode: '"count_mode" は "all" または "code_only" である�
 validation.language: '"language" は "en" または "ja" である必要があります'
 err.config_not_found: "設定ファイルが見つかりません。'linterly init' を実行して作成してください。"
 err.config_parse: "設定ファイルの解析に失敗しました: %s"
+err.unsupported_format: "サポートされていない出力フォーマットです: %s (%s)"
 update.available: "linterly の新しいバージョンが利用可能です: %s → %s"
 update.run: "`%s` を実行して更新してください。"
 update.visit: "%s から更新してください。"
