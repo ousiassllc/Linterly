@@ -14,6 +14,7 @@
 - 1MB を超える長い行を含むファイルで check 全体が失敗する問題を修正 / Fix check failing on files containing lines longer than 1MB (#51)
 - `count_mode: code_only` でブロックコメントと同じ行のコードがコード行に数えられない問題を修正 / Fix `code_only` dropping code that shares a line with a block comment (#53)
 - 更新チェックがメインコマンド終了後に最大 1 秒だけ完了を待つよう修正し、短時間で終わるコマンドでもキャッシュ保存と通知が行われるようにした / Wait up to 1 second for the update check after the main command so short commands still populate the cache and show the notice (#66)
+- `count_mode: code_only` で、コードの後ろで始まり複数行に続くブロックコメントの継続行がコード行に数えられる問題を修正 / Fix `code_only` counting continuation lines of a multi-line block comment that starts after code (#75, #79)
 
 ### 🔧 Improvements / 改善
 - 更新チェックの設定読み込みを `config.LoadUpdateSettings` に集約し、`config.Load` と同じ探索規則に統一 / Consolidate update-check settings loading into `config.LoadUpdateSettings`, sharing `config.Load`'s lookup rules (#56)
