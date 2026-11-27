@@ -18,46 +18,29 @@
 ```
 $ linterly
 
-Linterly - A code line count linter
+Linterly checks source code line counts against configured rules and reports violations.
 
 Usage:
   linterly [command]
 
 Available Commands:
   check       Run code line count checks
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
   init        Initialize a .linterly.yml config file
   version     Print version information
-  help        Help about any command
 
 Flags:
-  -h, --help             help for linterly
-      --no-update-check  disable update check
+  -h, --help              help for linterly
+      --lang string       language for messages (en, ja)
+      --no-update-check   disable update check
 
 Use "linterly [command] --help" for more information about a command.
 ```
 
-日本語設定時（`language: ja`）：
-
-```
-$ linterly
-
-Linterly - コード行数チェックツール
-
-使い方:
-  linterly [コマンド]
-
-利用可能なコマンド:
-  check       コード行数チェックを実行
-  init        設定ファイル (.linterly.yml) を初期化
-  version     バージョン情報を表示
-  help        コマンドのヘルプを表示
-
-フラグ:
-  -h, --help             ヘルプを表示
-      --no-update-check  バージョン更新チェックを無効化
-
-詳しくは "linterly [コマンド] --help" を参照してください。
-```
+- ヘルプテキスト（`--help` の出力）は cobra の標準出力であり、`--lang` / `LINTERLY_LANG` / `language` の設定に関わらず常に英語で表示される（i18n の対象外）
+- `completion` は cobra が自動で提供するシェル補完スクリプト生成コマンド
+- `--lang`・`--no-update-check` は全コマンド共通のグローバルフラグ
 
 ### 2.2 `linterly check`
 
@@ -66,22 +49,29 @@ Linterly - コード行数チェックツール
 #### 構文
 
 ```
-linterly check [path] [flags]
+linterly check [path...] [flags]
 ```
 
 #### 引数
 
 | 引数 | 必須 | デフォルト | 説明 |
 |------|------|-----------|------|
-| `path` | いいえ | `.`（カレントディレクトリ） | チェック対象のパス |
+| `path...` | いいえ | `.`（カレントディレクトリ） | チェック対象のパス。ディレクトリまたはファイルを 0 個以上指定できる |
+
+- `path` にファイルを直接指定できる（例: `linterly check src/a.go src/b.go`）。Git フックの `{staged_files}` や lint-staged が末尾に付与するファイル名もそのまま渡せる
+- 結果に出力するパスの基準は、単一のディレクトリを指定した場合はそのディレクトリ、それ以外（ファイルの指定・複数パスの指定）の場合はカレントディレクトリ
+- 除外パターン（デフォルト除外・`ignore`）とバイナリ判定は、直接指定したファイルにも通常の走査と同様に適用される。同じファイルが複数回見つかった場合は 1 件として扱う
+- ディレクトリ行数のチェックは、指定したパスから見つかったファイルのみを対象に合計する（指定しなかったファイルは合計に含まれない）
+- 存在しないパスを指定した場合は実行エラー（終了コード 2）
+- 読み取れないファイル（権限なし・走査後の削除など）は stderr に `warning: skipped <path>: <理由>` を出力してスキップし、チェックを続行する。終了コードには影響しない
 
 #### フラグ
 
 | フラグ | 短縮 | デフォルト | 説明 |
 |--------|------|-----------|------|
 | `--config` | `-c` | `.linterly.yml` | 設定ファイルのパス |
-| `--format` | `-f` | `text` | 出力形式（`text` / `json` / `junit` / `checkstyle`） |
-| `--lang` | | | メッセージの言語（`en` / `ja`）。設定ファイルの `language` より優先 |
+| `--format` | `-f` | `text` | 出力形式（`text` / `json` / `junit` / `checkstyle`）。未知の値は使用エラー（終了コード 2、走査前に検出）: `Error: Unsupported format: xml (text, json, junit, checkstyle)` |
+| `--lang` | | | メッセージの言語（`en` / `ja`）。設定ファイルの `language` より優先（グローバルフラグ、全コマンド共通） |
 | `--max-lines-per-file` | | `300` | 1ファイルあたりの最大行数。設定ファイルの `rules.max_lines_per_file` を上書き |
 | `--max-lines-per-directory` | | `2000` | ディレクトリ直下ファイルの合計最大行数。設定ファイルの `rules.max_lines_per_directory` を上書き |
 | `--warning-threshold` | | `10` | 警告閾値（%）。設定ファイルの `rules.warning_threshold` を上書き |
@@ -162,6 +152,7 @@ $ linterly check
 
 ```json
 {
+  "warnings": [],
   "results": [
     {
       "path": "src/handler.go",
@@ -199,6 +190,8 @@ $ linterly check
 
 - JSON 出力のキー名は常に英語（`language` 設定に依存しない）
 - `threshold` は `limit × (1 + warning_threshold / 100)` の計算値
+- トップレベルのキーは `warnings` / `results` / `summary`。`warnings` は警告がなくても常に出力され、その場合は空配列（`[]`）
+- `warnings` の要素は翻訳済みメッセージではなくメッセージキー（ignore 重複警告時は `"ignore.both_defined"`）。キー名は `language` 設定に依存しない
 
 #### JUnit XML 出力例
 
@@ -229,6 +222,7 @@ $ linterly check
 - `warn` → pass 扱い（`<failure>` なし）、内容は `<system-out>` に記載
 - `pass` → 空の `<testcase>`（自己閉じタグ）
 - メッセージは常に英語（`language` 設定に依存しない）
+- ignore 重複警告などの `warnings` は出力しない（JUnit XML に出力する要素がないため破棄される）
 
 #### checkstyle XML 出力例
 
@@ -253,10 +247,11 @@ $ linterly check
 - `line` 属性は `1` 固定（ファイル全体が対象のため）
 - `source` 属性は `"linterly"` 固定
 - メッセージは常に英語（`language` 設定に依存しない）
+- ignore 重複警告などの `warnings` は出力しない（checkstyle XML に出力する要素がないため破棄される）
 
 #### ignore 重複警告
 
-`.linterlyignore` と設定ファイルの `ignore` が両方存在する場合：
+`.linterlyignore` と設定ファイルの `ignore` が両方存在する場合、text 出力では次の警告を先頭に表示する。JSON 出力では `warnings` 配列にメッセージキー（`ignore.both_defined`）が入る。JUnit XML / checkstyle XML では出力されない。
 
 ```
 $ linterly check
@@ -310,6 +305,10 @@ linterly v1.0.0 (go1.25.6, linux/amd64)
 ## 3. バージョン更新チェック
 
 全コマンド実行時に、バックグラウンドで最新バージョンをチェックする。更新がある場合、コマンド出力の末尾に stderr で通知を表示する。通知メッセージは i18n 対応（`language` 設定・`--lang` フラグに従う）。
+
+- メインコマンドの終了後、更新チェックが未完了の場合は最大 1 秒だけ完了を待つ。これにより、短時間で終わるコマンドでも API 応答がキャッシュに保存され、通知を表示できる
+- 1 秒以内に完了しなかった場合は通知をスキップし、メインコマンドの終了を優先する。キャッシュが有効な場合はチェックが即座に完了するため待ちは発生しない
+- チェックの失敗（ネットワークエラー等）は何も出力せずスキップする（エラー表示・ログ出力なし）
 
 #### 出力例（go install 経由）
 
@@ -374,7 +373,7 @@ Visit https://github.com/ousiassllc/linterly/releases/latest to get the latest v
 |--------|------|
 | `0` | チェック成功（違反なし、または warn のみ） |
 | `1` | チェック失敗（error が 1 つ以上存在） |
-| `2` | 実行エラー（設定ファイル不正、引数エラー等） |
+| `2` | 実行エラー（設定ファイル不正、引数エラー、未知の `--format` 値、存在しないパスの指定等） |
 
 ## 5. 環境変数
 
@@ -422,3 +421,4 @@ CLI フラグ > 環境変数 > 設定ファイル > デフォルト値
 | 1.5 | 2026-03-03 | 通知メッセージを i18n 対応に変更、バージョン不明時の出力例を追加、無効化条件からバージョン不明時スキップを削除 | #30 フィードバック反映 |
 | 1.6 | 2026-03-03 | 無効化に設定ファイルの `update_check: false` を追加、優先順位表に update_check 列を追加 | #30 設定ファイル対応 |
 | 1.7 | 2026-03-07 | `--format` に `junit` / `checkstyle` を追加、JUnit XML / checkstyle XML の出力例・仕様を追加 | #43 JUnit XML / checkstyle XML 出力フォーマット追加 |
+| 1.8 | 2026-11-28 | ヘルプ出力例を実出力に合わせて更新し日本語ヘルプ例を削除（ヘルプは英語のみ）、`check` を `[path...]`（ファイル直接指定・複数パス・結果パスの基準位置・読み取り不能ファイルのスキップ警告）に更新、未知の `--format` を使用エラーとして明記、JSON 出力に `warnings` を追加、junit / checkstyle が warnings を出力しない旨を追記、更新チェックのメインコマンド終了後の最大 1 秒待機を追記 | #49, #50, #52, #57, #58, #59, #66 |
