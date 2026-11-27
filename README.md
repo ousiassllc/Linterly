@@ -13,7 +13,9 @@ A lightweight linter that checks code line counts. Set line limits per file and 
 - **Multi-language comment recognition** — Go, Rust, JavaScript/TypeScript, Python, Ruby, Java, C/C++, and more
 - **Flexible exclusion** — `.linterlyignore` (gitignore format) and config file exclusions
 - **Rich default exclusions** — Automatically excludes `node_modules/`, `vendor/`, `.git/`, `dist/`, etc.
+- **Output formats** — text, JSON, JUnit XML, and checkstyle XML (`--format`)
 - **i18n support** — CLI output in English and Japanese
+- **Update check** — Notifies you of new versions (can be disabled)
 
 ## Installation
 
@@ -39,8 +41,15 @@ linterly check
 # Check a specific path
 linterly check src/
 
+# Check specific files (multiple paths allowed; e.g. staged files from Git hooks)
+linterly check src/handler.go src/service.go
+
 # Output in JSON format
 linterly check --format json
+
+# Output in JUnit XML / checkstyle XML format
+linterly check --format junit
+linterly check --format checkstyle
 
 # Override config values with CLI flags
 linterly check --max-lines-per-file 500 --count-mode code_only
@@ -71,7 +80,7 @@ linterly version
   ERROR src/service.go (450 lines, limit: 300)
   ERROR src/ (2500 lines, limit: 2000)
 
-Results: 2 error(s), 1 warning, 42 passed
+Results: 2 error(s), 1 warning(s), 42 passed
 ```
 
 ### Exit Codes
@@ -101,6 +110,7 @@ ignore:
   - "**/*_generated.go"
 
 default_excludes: true           # Enable/disable default exclusions
+update_check: true               # Enable/disable the update check
 ```
 
 ### Violation Logic
@@ -118,7 +128,15 @@ lines > threshold     → ERROR (exit code 1)
 
 Use `.linterlyignore` with the same format as `.gitignore`. If both `.linterlyignore` and the `ignore` field in the config file are defined, `.linterlyignore` takes precedence.
 
-Patterns are always evaluated relative to the project root (where `.linterly.yml` or `.linterlyignore` is located), regardless of the target path. For example, `linterly check src/` evaluates patterns the same way as `linterly check .`.
+Patterns are always evaluated relative to the current directory (the project root), regardless of the target path or the location of the config file. `.linterlyignore` is always read from the current directory. For example, `linterly check src/` evaluates patterns the same way as `linterly check .`.
+
+### Update Check
+
+Linterly checks for a newer release in the background and prints a notice to stderr after the command finishes. The result is cached for 24 hours, and the command waits at most 1 second for the check to finish. Disable it with any of:
+
+- the `--no-update-check` flag
+- the `LINTERLY_NO_UPDATE_CHECK` environment variable (any non-empty value)
+- `update_check: false` in the config file
 
 ## Git Hooks Integration
 
@@ -133,6 +151,8 @@ pre-commit:
       run: linterly check {staged_files}
 ```
 
+`check` accepts file paths, so the staged files are passed as-is. Directory line limits are evaluated only against the files you pass.
+
 ### Husky + lint-staged
 
 ```json
@@ -143,6 +163,8 @@ pre-commit:
   }
 }
 ```
+
+lint-staged appends the staged file names to the command. Directory line limits are evaluated only against those files.
 
 ## CI Usage
 
@@ -164,7 +186,7 @@ See [`docs/`](./docs/) for detailed specifications.
 | [Non-functional Requirements](./docs/requirements/non-functional.md) | Performance, platforms, distribution |
 | [Architecture](./docs/architecture/overview.md) | Layer structure, tech choices, package design |
 | [Config Schema](./docs/architecture/config-schema.md) | YAML spec, validation, ignore format |
-| [Component Design](./docs/components/overview.md) | Responsibilities and interfaces of 7 components |
+| [Component Design](./docs/components/overview.md) | Responsibilities and interfaces of 8 components |
 | [CLI Specification](./docs/api/cli.md) | Commands, flags, output, exit codes |
 
 ## License
