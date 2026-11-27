@@ -118,15 +118,6 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 	return &CheckResult{CurrentVersion: current, LatestVersion: latest}, nil
 }
 
-// DetectInstallMethod は実行バイナリのパスからインストール経路を推定する。
-func DetectInstallMethod() InstallMethod {
-	exe, err := os.Executable()
-	if err != nil {
-		return InstallMethodUnknown
-	}
-	return detectInstallMethodFromPath(exe)
-}
-
 func (c *Checker) resolveCurrentVersion() string {
 	if c.currentVersion != "dev" && c.currentVersion != "" {
 		return c.currentVersion

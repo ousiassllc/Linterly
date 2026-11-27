@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,8 +159,9 @@ func TestPrintUpdateNotice_NoUpdate(t *testing.T) {
 }
 
 func TestPrintUpdateNotice_NotCompleted(t *testing.T) {
-	oldResult := updateResult
-	defer func() { updateResult = oldResult }()
+	oldResult, oldWait := updateResult, updateWaitTimeout
+	defer func() { updateResult, updateWaitTimeout = oldResult, oldWait }()
+	updateWaitTimeout = 10 * time.Millisecond
 
 	// 空のバッファ付きチャネル（何も送信されていない）
 	ch := make(chan *updatecheck.CheckResult, 1)
@@ -268,4 +271,77 @@ func TestResolveUpdateCheckLang_InvalidConfigLanguage(t *testing.T) {
 	langFlag = ""
 	// 無効な言語コードの場合はデフォルト "en" にフォールバック
 	assert.Equal(t, "en", resolveUpdateCheckLang("fr"))
+}
+
+// --- 短時間コマンドでも更新チェックの完了を（上限付きで）待つ ---
+
+// startUpdateCheck 後にチェックが遅れて完了しても、上限時間内なら通知を表示する。
+func TestPrintUpdateNotice_WaitsForSlowCheck(t *testing.T) {
+	oldFlag, oldResult, oldRun, oldWait := flagNoUpdateCheck, updateResult, runUpdateCheck, updateWaitTimeout
+	defer func() {
+		flagNoUpdateCheck, updateResult, runUpdateCheck, updateWaitTimeout = oldFlag, oldResult, oldRun, oldWait
+	}()
+	flagNoUpdateCheck = false
+	t.Setenv("LINTERLY_NO_UPDATE_CHECK", "")
+	t.Setenv("LINTERLY_CONFIG", "")
+	updateResult = nil
+	updateWaitTimeout = 10 * time.Second
+
+	release := make(chan struct{})
+	runUpdateCheck = func(ctx context.Context, lang string) (*updatecheck.CheckResult, error) {
+		<-release
+		return &updatecheck.CheckResult{UpdateAvailable: true, Message: "update available: v9.9.9"}, nil
+	}
+
+	startUpdateCheck()
+	require.NotNil(t, updateResult)
+	// printUpdateNotice が待機に入った後でチェックを完了させる
+	time.AfterFunc(20*time.Millisecond, func() { close(release) })
+
+	output := helperCaptureStderr(t, printUpdateNotice)
+	assert.Contains(t, output, "update available: v9.9.9")
+}
+
+// チェックが上限時間内に終わらなければ、通知せずに戻る（メインコマンドを無制限に遅らせない）。
+func TestPrintUpdateNotice_GivesUpAfterTimeout(t *testing.T) {
+	oldFlag, oldResult, oldRun, oldWait := flagNoUpdateCheck, updateResult, runUpdateCheck, updateWaitTimeout
+	defer func() {
+		flagNoUpdateCheck, updateResult, runUpdateCheck, updateWaitTimeout = oldFlag, oldResult, oldRun, oldWait
+	}()
+	flagNoUpdateCheck = false
+	t.Setenv("LINTERLY_NO_UPDATE_CHECK", "")
+	t.Setenv("LINTERLY_CONFIG", "")
+	updateResult = nil
+	updateWaitTimeout = 10 * time.Millisecond
+
+	block := make(chan struct{})
+	defer close(block)
+	runUpdateCheck = func(ctx context.Context, lang string) (*updatecheck.CheckResult, error) {
+		<-block
+		return &updatecheck.CheckResult{UpdateAvailable: true, Message: "never shown"}, nil
+	}
+
+	startUpdateCheck()
+	require.NotNil(t, updateResult)
+
+	output := helperCaptureStderr(t, printUpdateNotice)
+	assert.Empty(t, output)
+}
+
+// 無効化されている場合は runUpdateCheck（通信）も待機も発生しない。
+func TestStartUpdateCheck_DisabledDoesNotRun(t *testing.T) {
+	oldFlag, oldResult, oldRun := flagNoUpdateCheck, updateResult, runUpdateCheck
+	defer func() { flagNoUpdateCheck, updateResult, runUpdateCheck = oldFlag, oldResult, oldRun }()
+	flagNoUpdateCheck = true
+	updateResult = nil
+	called := make(chan struct{}, 1)
+	runUpdateCheck = func(ctx context.Context, lang string) (*updatecheck.CheckResult, error) {
+		called <- struct{}{}
+		return nil, nil
+	}
+
+	startUpdateCheck()
+	assert.Nil(t, updateResult)
+	assert.Empty(t, helperCaptureStderr(t, printUpdateNotice))
+	assert.Empty(t, called)
 }
