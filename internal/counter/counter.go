@@ -2,6 +2,8 @@ package counter
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,8 +14,12 @@ import (
 	"github.com/ousiassllc/linterly/internal/config"
 )
 
-// maxScanBufSize はスキャナーのバッファ上限（1MB）。
-const maxScanBufSize = 1024 * 1024
+// maxLineKeepSize は code_only モードで 1 行あたりに保持する最大バイト数（1MB）。
+// これを超える長大行は先頭のみ判定に使い、残りは読み捨てる（行数には 1 行として数える）。
+const maxLineKeepSize = 1024 * 1024
+
+// readChunkSize は countAll の読み取りチャンクサイズ。
+const readChunkSize = 64 * 1024
 
 // LineCount はファイルの行数カウント結果。
 type LineCount struct {
@@ -101,32 +107,78 @@ func countFiles(files []string, mode string, countFn func(string, string) (*Line
 	return results, nil
 }
 
-// countAll はファイルの全行数をカウントする。
+// countAll はファイルの全行数をカウントする。行の長さには依存しない。
 func countAll(r io.Reader) (int, error) {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxScanBufSize)
+	buf := make([]byte, readChunkSize)
 	count := 0
-	for scanner.Scan() {
-		count++
+	var last byte
+	read := false
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			read = true
+			count += bytes.Count(buf[:n], []byte{'\n'})
+			last = buf[n-1]
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		return 0, err
+	// 末尾が改行で終わらない最終行も 1 行として数える
+	if read && last != '\n' {
+		count++
 	}
 	return count, nil
 }
 
+// readLine は r から 1 行（改行を除く）を読み取る。
+// 行が limit バイトを超える場合、先頭 limit バイトのみ buf に保持し残りは読み捨てる。
+// 行を 1 つも読めずに EOF に達した場合は ok=false を返す。
+func readLine(r *bufio.Reader, buf []byte, limit int) (line []byte, ok bool, err error) {
+	buf = buf[:0]
+	for {
+		chunk, err := r.ReadSlice('\n')
+		if len(chunk) > 0 {
+			ok = true
+			if room := limit - len(buf); room > 0 {
+				buf = append(buf, chunk[:min(room, len(chunk))]...)
+			}
+		}
+		switch {
+		case err == nil:
+			return bytes.TrimSuffix(buf, []byte{'\n'}), true, nil
+		case errors.Is(err, bufio.ErrBufferFull):
+			continue
+		case errors.Is(err, io.EOF):
+			return buf, ok, nil
+		default:
+			return nil, false, err
+		}
+	}
+}
+
 // countCodeOnly はコード行数を計算する（コメント・空行除外）。
 func countCodeOnly(r io.Reader, lang *Language) (total int, code int, err error) {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxScanBufSize)
+	reader := bufio.NewReader(r)
+	lineBuf := make([]byte, 0, bufio.MaxScanTokenSize)
 	inBlock := false
 	// Python docstring のためのトラッカー
 	isPython := lang != nil && lang.Name == "Python"
 
-	for scanner.Scan() {
+	for {
+		lineBytes, ok, err := readLine(reader, lineBuf, maxLineKeepSize)
+		if err != nil {
+			return 0, 0, err
+		}
+		if !ok {
+			break
+		}
+		lineBuf = lineBytes[:0]
 		total++
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
+		trimmed := strings.TrimSpace(string(lineBytes))
 
 		// 空行チェック
 		if trimmed == "" {
@@ -165,9 +217,6 @@ func countCodeOnly(r io.Reader, lang *Language) (total int, code int, err error)
 		code++
 	}
 
-	if err := scanner.Err(); err != nil {
-		return 0, 0, err
-	}
 	return total, code, nil
 }
 

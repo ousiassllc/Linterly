@@ -151,30 +151,70 @@ func TestCountFile_LargeLine_CodeOnlyMode(t *testing.T) {
 	assert.Equal(t, 2, lc.TotalLines)
 }
 
-func TestCountFile_ScannerError_AllMode(t *testing.T) {
-	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
+func TestCountFile_HugeLine_AllMode(t *testing.T) {
+	// maxLineKeepSize(1MB) を超える長大行を含んでもエラーにならず、正しい行数を返す
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "huge_line.txt")
 
-	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
+	data := bytes.Repeat([]byte("a"), 2*maxLineKeepSize)
+	data = append(data, []byte("\nsecond\nthird")...)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
-	_, err := CountFile(path, config.CountModeAll)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), path)
+	lc, err := CountFile(path, config.CountModeAll)
+	require.NoError(t, err)
+	assert.Equal(t, 3, lc.TotalLines)
+	assert.Equal(t, 3, lc.CodeLines)
 }
 
-func TestCountFile_ScannerError_CodeOnlyMode(t *testing.T) {
-	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
+func TestCountFile_HugeLine_CodeOnlyMode(t *testing.T) {
+	// maxLineKeepSize(1MB) を超える長大行を含んでもエラーにならず、正しい行数を返す
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, "huge_line.go")
 
-	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
+	data := bytes.Repeat([]byte("a"), 2*maxLineKeepSize)
+	data = append(data, []byte("\n// comment\n\npackage main")...)
 	require.NoError(t, os.WriteFile(path, data, 0644))
 
-	_, err := CountFile(path, config.CountModeCodeOnly)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), path)
+	lc, err := CountFile(path, config.CountModeCodeOnly)
+	require.NoError(t, err)
+	assert.Equal(t, 4, lc.TotalLines)
+	assert.Equal(t, 2, lc.CodeLines) // 長大行 + package main
+}
+
+func TestCountFile_HugeSingleLine_NoNewline(t *testing.T) {
+	// 改行なしの 2MB 単一行は両モードとも 1 行
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "big.js")
+	require.NoError(t, os.WriteFile(path, bytes.Repeat([]byte("a"), 2*maxLineKeepSize), 0644))
+
+	for _, mode := range []string{config.CountModeAll, config.CountModeCodeOnly} {
+		lc, err := CountFile(path, mode)
+		require.NoError(t, err, mode)
+		assert.Equal(t, 1, lc.TotalLines, mode)
+		assert.Equal(t, 1, lc.CodeLines, mode)
+	}
+}
+
+func TestCountAll_Edges(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty", "", 0},
+		{"only newline", "\n", 1},
+		{"no trailing newline", "a\nb", 2},
+		{"trailing newline", "a\nb\n", 2},
+		{"blank lines", "\n\n\n", 3},
+		{"crlf", "a\r\nb\r\n", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := countAll(strings.NewReader(tt.input))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestCountAll_FromReader(t *testing.T) {
