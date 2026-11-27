@@ -6,10 +6,10 @@
 graph TD
     A["CLI Layer<br/>(cobra: コマンド解析、フラグ処理、ヘルプ表示)"]
     B["Config Layer<br/>(.linterly.yml 読み込み、.linterlyignore 解析、<br/>デフォルト除外、バリデーション)"]
-    C["Scanner Layer<br/>(ファイル走査、除外フィルタ、並行処理)"]
-    D["Counter Layer<br/>(行数カウント、コメント・空行認識、言語検出)"]
+    C["Scanner Layer<br/>(ファイル走査（逐次）、除外フィルタ)"]
+    D["Counter Layer<br/>(行数カウント（上限付きワーカープールで並行）、<br/>コメント・空行認識、言語検出)"]
     E["Analyzer Layer<br/>(ルール評価、閾値判定、error/warn 分類)"]
-    F["Reporter Layer<br/>(テキスト/JSON 出力、i18n メッセージ解決)"]
+    F["Reporter Layer<br/>(テキスト/JSON/JUnit XML/checkstyle XML 出力、<br/>i18n メッセージ解決)"]
     G["UpdateCheck Layer<br/>(GitHub API チェック、キャッシュ管理、<br/>インストール経路検出)"]
 
     A --> B --> C --> D --> E --> F
@@ -22,7 +22,7 @@ graph TD
 
 | カテゴリ | 技術 | 理由 |
 |---------|------|------|
-| 言語 | Go 1.24+ | シングルバイナリ、クロスコンパイル、並行処理が容易 |
+| 言語 | Go 1.26（`go.mod` に準拠） | シングルバイナリ、クロスコンパイル、並行処理が容易 |
 | CLI フレームワーク | [cobra](https://github.com/spf13/cobra) | Go CLI ツールのデファクトスタンダード |
 | 設定ファイル | [viper](https://github.com/spf13/viper) | YAML 読み込み、デフォルト値管理に強い |
 | ignore パーサー | [go-gitignore](https://github.com/denormal/go-gitignore) | gitignore 形式のパターンマッチ |
@@ -42,7 +42,9 @@ linterly/
 │   │   ├── root.go         #   ルートコマンド（ヘルプ表示）
 │   │   ├── check.go        #   check サブコマンド
 │   │   ├── init.go         #   init サブコマンド
-│   │   └── version.go      #   version サブコマンド
+│   │   ├── version.go      #   version サブコマンド
+│   │   ├── exitcode.go     #   終了コード付きエラー（ExitError）
+│   │   └── updatecheck.go  #   更新チェックの起動・結果表示
 │   ├── config/             # Config Layer: 設定管理
 │   │   ├── config.go       #   設定ファイル読み込み・バリデーション
 │   │   ├── ignore.go       #   ignore ファイル処理・優先ルール
@@ -56,8 +58,11 @@ linterly/
 │   ├── analyzer/           # Analyzer Layer: ルール評価
 │   │   └── analyzer.go     #   閾値判定・結果分類
 │   ├── reporter/           # Reporter Layer: 出力
+│   │   ├── reporter.go     #   Reporter インターフェース・フォーマット選択
 │   │   ├── text.go         #   テキスト出力
-│   │   └── json.go         #   JSON 出力
+│   │   ├── json.go         #   JSON 出力
+│   │   ├── junit.go        #   JUnit XML 出力
+│   │   └── checkstyle.go   #   checkstyle XML 出力
 │   ├── i18n/               # 国際化
 │   │   ├── i18n.go         #   メッセージ解決
 │   │   └── messages/       #   メッセージファイル
@@ -65,36 +70,38 @@ linterly/
 │   │       └── ja.yml
 │   └── updatecheck/        # バージョン更新チェック
 │       └── updatecheck.go  #   GitHub API チェック、キャッシュ管理、インストール経路検出
-├── pkg/                    # 公開パッケージ（将来的にライブラリ利用を想定）
 ├── testdata/               # テスト用フィクスチャ
-├── dist/                   # npm/cargo/pip ラッパー
-│   ├── npm/
-│   │   ├── cli/            #   @linterly/cli（メインパッケージ）
-│   │   │   ├── package.json
-│   │   │   └── bin.js      #   プラットフォーム別バイナリ実行ラッパー
-│   │   ├── darwin-arm64/   #   @linterly/darwin-arm64
-│   │   │   └── package.json
-│   │   ├── darwin-x64/     #   @linterly/darwin-x64
-│   │   │   └── package.json
-│   │   ├── linux-arm64/    #   @linterly/linux-arm64
-│   │   │   └── package.json
-│   │   ├── linux-x64/      #   @linterly/linux-x64
-│   │   │   └── package.json
-│   │   └── win32-x64/      #   @linterly/win32-x64
-│   │       └── package.json
-│   ├── cargo/              #   crates.io ラッパー（将来実装予定）
-│   ├── pip/                #   PyPI ラッパー（将来実装予定）
-│   └── docker/             #   Docker イメージ（将来実装予定）
-│       └── Dockerfile
+├── dist/                   # npm ラッパー（cargo/pip/docker は未作成）
+│   └── npm/
+│       ├── cli/            #   @linterly/cli（メインパッケージ）
+│       │   ├── package.json
+│       │   ├── bin.js      #   プラットフォーム別バイナリ実行ラッパー
+│       │   └── README.md   #   npm パッケージ用 README
+│       ├── darwin-arm64/   #   @linterly/darwin-arm64
+│       │   └── package.json
+│       ├── darwin-x64/     #   @linterly/darwin-x64
+│       │   └── package.json
+│       ├── linux-arm64/    #   @linterly/linux-arm64
+│       │   └── package.json
+│       ├── linux-x64/      #   @linterly/linux-x64
+│       │   └── package.json
+│       └── win32-x64/      #   @linterly/win32-x64
+│           └── package.json
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # テスト・Lint
 │       └── release.yml     # リリース自動化
 ├── .linterly.yml           # 自分自身のチェック用設定
+├── .linterlyignore         # 自分自身のチェック用除外設定
+├── .golangci.yml           # golangci-lint 設定
 ├── .goreleaser.yml         # GoReleaser 設定
+├── lefthook.yml            # Git フック設定
+├── Makefile
 ├── go.mod
 ├── go.sum
-└── README.md
+├── CHANGELOG.md
+├── README.md
+└── README.ja.md
 ```
 
 ## 4. データフロー
@@ -111,7 +118,7 @@ graph LR
     C -.- C1["ファイル一覧<br/>(除外済み)"]
     D -.- D1["行数データ<br/>(per file)"]
     E -.- E1["判定結果<br/>(pass/warn/error)"]
-    F -.- F1["テキスト/JSON<br/>出力"]
+    F -.- F1["テキスト/JSON/<br/>JUnit XML/checkstyle XML<br/>出力"]
 ```
 
 ### 処理フロー詳細
@@ -119,8 +126,8 @@ graph LR
 1. **CLI 引数パース**: cobra がコマンド・フラグを解析
 2. **設定読み込み**: viper が `.linterly.yml` を読み込み、デフォルト値とマージ
 3. **ignore 解決**: `.linterlyignore` の存在確認 → 優先ルール適用 → 重複警告
-4. **ファイル走査**: 対象パスを再帰走査、除外パターン・デフォルト除外・バイナリ判定を適用
-5. **行数カウント**: 各ファイルの行数をカウント（モードに応じてコメント・空行を除外）
+4. **ファイル走査**: 指定パス（ディレクトリまたはファイル、複数可）を逐次再帰走査し、除外パターン・デフォルト除外・バイナリ判定を適用
+5. **行数カウント**: 各ファイルの行数を上限付きワーカープールで並行にカウント（モードに応じてコメント・空行を除外）
 6. **ディレクトリ集計**: ディレクトリ直下ファイルの行数を合計（サブディレクトリ除外）
 7. **ルール評価**: 設定値・閾値と比較し、pass / warn / error を判定
 8. **結果出力**: 指定フォーマットで結果を出力
@@ -164,3 +171,4 @@ graph TD
 | 1.2 | 2026-02-08 | パッケージ構成に version.go を追加、レイヤー図に注記を追加 | CLI 仕様・コンポーネント設計との整合性確保 |
 | 1.3 | 2026-02-08 | Go バージョンを 1.24+ に更新 | ドキュメント乖離レポート (#3) 対応 |
 | 1.4 | 2026-03-03 | 全体構成図に UpdateCheck Layer を追加、パッケージ構成に updatecheck パッケージを追加 | #30 バージョン更新チェック機能 |
+| 1.5 | 2026-11-28 | Go バージョンを go.mod に合わせ 1.26 に更新、パッケージ構成を実態に合わせて更新（reporter に junit.go / checkstyle.go / reporter.go、cli に exitcode.go / updatecheck.go を追加、`pkg/` と未作成の dist/docker を削除）、図・処理フローの出力形式を 4 形式に更新、走査の並行処理の記述を削除（並行処理は行数カウントのみ） | #62, #63 |
