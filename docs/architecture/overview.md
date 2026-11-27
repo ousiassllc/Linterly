@@ -54,6 +54,7 @@ linterly/
 │   │   └── binary.go       #   バイナリファイル判定（拡張子 + null バイト検出）
 │   ├── counter/            # Counter Layer: 行数カウント
 │   │   ├── counter.go      #   行数カウントロジック
+│   │   ├── blockcomment.go #   code_only のコメント判定（ブロックコメントの継続状態）
 │   │   └── language.go     #   言語検出・コメント構文定義
 │   ├── analyzer/           # Analyzer Layer: ルール評価
 │   │   └── analyzer.go     #   閾値判定・結果分類
@@ -69,7 +70,8 @@ linterly/
 │   │       ├── en.yml
 │   │       └── ja.yml
 │   └── updatecheck/        # バージョン更新チェック
-│       └── updatecheck.go  #   GitHub API チェック、キャッシュ管理、インストール経路検出
+│       ├── updatecheck.go  #   GitHub API チェック、インストール経路検出
+│       └── cache.go        #   キャッシュ管理（成功 24 時間・失敗記録 1 時間）
 ├── testdata/               # テスト用フィクスチャ
 ├── dist/                   # npm ラッパー（cargo/pip/docker は未作成）
 │   └── npm/
@@ -140,27 +142,23 @@ graph TD
     A["git tag push"] --> B["GitHub Actions: release.yml"]
 
     B --> C["GoReleaser"]
-    C --> C1["Go クロスコンパイル<br/>(linux/darwin/windows × amd64/arm64)"]
+    C --> C1["Go クロスコンパイル<br/>(linux/darwin × amd64/arm64、windows × amd64)"]
     C --> C2["GitHub Releases に<br/>バイナリ・チェックサムをアップロード"]
-    C --> C3["Docker イメージ<br/>ビルド & push"]
 
     B --> D["npm publish"]
     D --> D1["各プラットフォーム用パッケージにバイナリを配置"]
     D --> D2["@linterly/{platform} を publish"]
     D --> D3["@linterly/cli を publish"]
-
-    B --> E["cargo publish"]
-    B --> F["pip publish (twine)"]
-    B --> G["GitHub Action リリース"]
 ```
+
+cargo / pip / Docker イメージ / GitHub Action は将来実装予定であり、現在のリリースパイプラインには含まれない（`docs/requirements/non-functional.md` §3 と同じ扱い）。
 
 ### リリースフロー
 
 1. `git tag v1.0.0` → push
 2. GitHub Actions がトリガーされる
-3. GoReleaser がクロスコンパイル + GitHub Releases に publish
-4. 各パッケージマネージャ向けのラッパーにバイナリを配置して publish
-5. Docker イメージをビルドして GHCR に push
+3. GoReleaser がクロスコンパイル（5 ターゲット。windows/arm64 は除く）+ チェックサム生成 + GitHub Releases に publish
+4. npm 向けに、各プラットフォーム用パッケージ（`@linterly/{platform}`）へバイナリを配置して publish し、最後に `@linterly/cli` を publish
 
 ## 改訂履歴
 
@@ -172,3 +170,4 @@ graph TD
 | 1.3 | 2026-02-08 | Go バージョンを 1.24+ に更新 | ドキュメント乖離レポート (#3) 対応 |
 | 1.4 | 2026-03-03 | 全体構成図に UpdateCheck Layer を追加、パッケージ構成に updatecheck パッケージを追加 | #30 バージョン更新チェック機能 |
 | 1.5 | 2026-11-28 | Go バージョンを go.mod に合わせ 1.26 に更新、パッケージ構成を実態に合わせて更新（reporter に junit.go / checkstyle.go / reporter.go、cli に exitcode.go / updatecheck.go を追加、`pkg/` と未作成の dist/docker を削除）、図・処理フローの出力形式を 4 形式に更新、走査の並行処理の記述を削除（並行処理は行数カウントのみ） | #62, #63 |
+| 1.6 | 2026-11-28 | 5. ビルド・配布パイプラインを実装に合わせて修正（未実装の Docker / cargo / pip / GitHub Action を図とリリースフローから削除し将来実装予定と注記、ターゲットを windows/arm64 除く 5 つに修正）、パッケージ構成に counter/blockcomment.go・updatecheck/cache.go を追加 | #73, #75, #78 |

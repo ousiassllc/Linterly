@@ -14,6 +14,9 @@
 - 1MB を超える長い行を含むファイルで check 全体が失敗する問題を修正 / Fix check failing on files containing lines longer than 1MB (#51)
 - `count_mode: code_only` でブロックコメントと同じ行のコードがコード行に数えられない問題を修正 / Fix `code_only` dropping code that shares a line with a block comment (#53)
 - 更新チェックがメインコマンド終了後に最大 1 秒だけ完了を待つよう修正し、短時間で終わるコマンドでもキャッシュ保存と通知が行われるようにした / Wait up to 1 second for the update check after the main command so short commands still populate the cache and show the notice (#66)
+- シンボリックリンクのディレクトリ・ファイルを `check` に指定すると何も検査されず exit 0 になる問題を修正し、リンク先を検査するようにした / Fix `check <symlink>` scanning nothing and exiting 0; the link target is now scanned (#77)
+- 除外ディレクトリを `check` に直接指定すると除外されず、ファイル指定と挙動が異なる問題を修正（除外ディレクトリの指定は何も検査しない） / Fix an excluded directory passed to `check` being scanned unlike an excluded file; it is now skipped consistently (#76)
+- 通信できない環境で更新チェックが毎回 1 秒待たせる問題を修正（失敗も 1 時間キャッシュして再試行しない） / Fix the update check delaying every run by 1 second when the network is blocked; failed attempts are now cached for 1 hour (#78)
 - `count_mode: code_only` で、コードの後ろで始まり複数行に続くブロックコメントの継続行がコード行に数えられる問題を修正 / Fix `code_only` counting continuation lines of a multi-line block comment that starts after code (#75, #79)
 
 ### 🔧 Improvements / 改善
@@ -25,6 +28,7 @@
 - 言語別コメント認識（F-021〜F-028）の `code_only` テストを追加 / Add `code_only` comment-recognition tests for each language (F-021 to F-028) (#69)
 
 ### 📝 Documentation / ドキュメント
+- JUnit / checkstyle の出力例と配布パイプラインの記述を実装に合わせて修正 / Align the JUnit/checkstyle examples and the distribution pipeline docs with the implementation (#73, #74)
 - JUnit XML / checkstyle XML 出力フォーマットの仕様を追加 / Add specification for JUnit XML and checkstyle XML output formats (#43)
 - 仕様書・README を実装に合わせて更新（check のパス引数、ヘルプ出力、JSON `warnings`、更新チェックの挙動、パッケージ構成、Go 1.26、CSS/SCSS コメント、Git Hooks 例、README の出力例・format・更新チェック記載など） / Sync specs and READMEs with the implementation (`check` path arguments, help output, JSON `warnings`, update-check behavior, package layout, Go 1.26, CSS/SCSS comments, Git Hooks examples, README output examples/formats/update check, etc.) (#57, #58, #59, #61, #62, #63, #64, #65)
 - CHANGELOG の誤記（v0.3.0 のフラグ名、v0.3.2 の文字化け）を修正 / Fix CHANGELOG typos (v0.3.0 flag names, v0.3.2 garbled text) (#60)

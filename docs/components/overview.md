@@ -163,7 +163,7 @@ func DefaultExcludePatterns() []string
 
 | ファイル | 責務 |
 |---------|------|
-| `scanner.go` | ディレクトリ・ファイルの逐次走査（`filepath.Walk`）、除外フィルタ適用、複数パスの統合 |
+| `scanner.go` | ディレクトリ・ファイルの逐次走査（`filepath.Walk`）、除外フィルタ適用（除外ディレクトリの直接指定を含む）、シンボリックリンクで指定されたパスの解決、複数パスの統合 |
 | `binary.go` | バイナリファイル判定（拡張子チェック + null バイト検出の2段階判定） |
 
 #### 主要インターフェース
@@ -227,6 +227,7 @@ func Scan(targetPath string, cfg *config.Config) (*ScanResult, error)
 | ファイル | 責務 |
 |---------|------|
 | `counter.go` | 行数カウントロジック。バッファ付き I/O で効率的に処理し、`CountFiles` は上限付きワーカープールで並行にカウントする |
+| `blockcomment.go` | `code_only` のコメント判定。行コメント・ブロックコメントの継続状態の管理（コードの後ろで始まる複数行ブロックコメントを含む） |
 | `language.go` | ファイル拡張子からの言語検出、各言語のコメント構文定義 |
 
 #### 主要インターフェース
@@ -464,7 +465,8 @@ update.unknown_visit: "%s から最新版を取得してください。"
 
 | ファイル | 責務 |
 |---------|------|
-| `updatecheck.go` | 更新チェックのコア処理。GitHub API 呼び出し、キャッシュ管理、バージョン比較、インストール経路検出、メッセージ生成 |
+| `updatecheck.go` | 更新チェックのコア処理。GitHub API 呼び出し、バージョン比較、インストール経路検出、メッセージ生成 |
+| `cache.go` | キャッシュファイルの読み書き（成功結果 24 時間・失敗記録 1 時間） |
 
 #### 主要インターフェース
 
@@ -515,6 +517,7 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error)
 - 保存先: `os.UserCacheDir()/linterly/latest-version.json`
 - 有効期間: 24 時間（`checked_at` + 24h > 現在時刻 → キャッシュヒット）
 - JSON パースに失敗した場合はキャッシュを無視して GitHub API を再呼び出しする
+- 通信できない環境で毎回待たされないよう、GitHub API を呼び出す前に `{"failed": true, "checked_at": ...}`（`latest_version` なし）を書き込み、成功した場合のみ上書きする。失敗記録の有効期間は 1 時間（`failureCacheTTL`）で、期間内の `Check` は通信せず即座にエラーを返す。応答を待たずにプロセスが終了した場合も同様に再試行しない
 
 #### インストール経路検出
 
@@ -641,3 +644,4 @@ sequenceDiagram
 | 1.6 | 2026-03-03 | updatecheck: i18n 依存追加、CheckResult に VersionUnknown フィールド追加、バージョン不明時は毎回通知に変更、i18n メッセージ例に update.* キーを追加 | #30 フィードバック反映 |
 | 1.7 | 2026-03-07 | reporter: junit.go / checkstyle.go を追加、NewReporter のフォーマット一覧を更新、責務説明に JUnit XML / checkstyle XML を追加 | #43 JUnit XML / checkstyle XML 出力フォーマット追加 |
 | 1.8 | 2026-11-28 | 依存関係の記述を実装に合わせて更新（config→i18n、cli の依存一覧）、config.Load がバリデーション済みである旨と `LoadUpdateSettings` を追記、scanner を `ScanPaths`（ファイル直接指定・複数パス・読み取り不能エントリのスキップ）・逐次走査に修正、counter の `CountFiles` を上限付きワーカープール・skipped 返却に更新、updatecheck の CLI 呼び出しパターン（`NewChecker(Version, translator)`・`Execute()` 内での表示・最大 1 秒待機・無効化条件・サイレント失敗）と `Checker` 構造体・インストール経路検出を実装に合わせて更新、cli に exitcode.go / updatecheck.go を追加、reporter にフォーマット別の warnings の扱いと IsSupportedFormat を追記 | #48, #49, #52, #56, #59, #61, #62, #66 |
+| 1.9 | 2026-11-28 | scanner: 除外ディレクトリの直接指定・シンボリックリンク指定の扱いを追記、counter: blockcomment.go を追加、updatecheck: cache.go と失敗記録のキャッシュ（1 時間）を追記 | #75, #76, #77, #78, #79 |
