@@ -242,3 +242,24 @@ func TestTextReporter_NoColor_Field(t *testing.T) {
 	assert.False(t, strings.Contains(output, "\033[31m")) // カラーなし
 	assert.Contains(t, output, "a.go")
 }
+
+func TestNewReporter_WiresEachFormat(t *testing.T) {
+	tr, err := i18n.New("en")
+	require.NoError(t, err)
+
+	tests := []struct {
+		format string
+		want   Reporter
+	}{
+		{FormatText, &TextReporter{}},
+		{FormatJSON, &JSONReporter{}},
+		{FormatJUnit, &JUnitReporter{}},
+		{FormatCheckstyle, &CheckstyleReporter{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			var buf bytes.Buffer
+			assert.IsType(t, tt.want, NewReporter(tt.format, tr, &buf))
+		})
+	}
+}
