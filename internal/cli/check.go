@@ -2,8 +2,9 @@ package cli
 
 import (
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -32,10 +33,10 @@ var (
 )
 
 var checkCmd = &cobra.Command{
-	Use:   "check [path]",
+	Use:   "check [path...]",
 	Short: "Run code line count checks",
-	Long:  "Check source code line counts against configured rules and report violations.",
-	Args:  cobra.MaximumNArgs(1),
+	Long:  "Check source code line counts against configured rules and report violations.\nEach path may be a directory or a file (e.g. linterly check {staged_files}).",
+	Args:  cobra.ArbitraryArgs,
 	RunE:  runCheck,
 }
 
@@ -54,9 +55,9 @@ func init() {
 
 func runCheck(cmd *cobra.Command, args []string) error {
 	// ターゲットパスの決定
-	targetPath := "."
-	if len(args) > 0 {
-		targetPath = args[0]
+	targetPaths := args
+	if len(targetPaths) == 0 {
+		targetPaths = []string{"."}
 	}
 
 	// config 読み込み前に言語を解決して Translator を初期化
@@ -92,31 +93,29 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	// ファイル走査
-	scanResult, err := scanner.Scan(targetPath, cfg)
+	scanResult, err := scanner.ScanPaths(targetPaths, cfg)
 	if err != nil {
 		return NewRuntimeError("failed to scan files: %v", err)
 	}
 
-	// ファイルパスを絶対パスに変換（カウント用）
-	absTarget, err := filepath.Abs(targetPath)
-	if err != nil {
-		return NewRuntimeError("failed to resolve path: %v", err)
-	}
-
+	// 行数カウント（ファイルパスは絶対パスで渡し、結果のパスを相対パスに戻す）
 	filePaths := make([]string, len(scanResult.Files))
+	relPaths := make(map[string]string, len(scanResult.Files))
 	for i, f := range scanResult.Files {
-		filePaths[i] = filepath.Join(absTarget, f.Path)
+		filePaths[i] = f.AbsPath
+		relPaths[f.AbsPath] = f.Path
 	}
-
-	// 行数カウント
-	counts, err := counter.CountFiles(filePaths, cfg.CountMode)
-	if err != nil {
-		return NewRuntimeError("failed to count lines: %v", err)
-	}
-
-	// カウント結果のパスを相対パスに戻す
+	counts, skippedCounts := counter.CountFiles(filePaths, cfg.CountMode)
 	for i := range counts {
-		counts[i].Path = scanResult.Files[i].Path
+		counts[i].Path = relPaths[counts[i].Path]
+	}
+
+	// 読み取れずにスキップしたファイルは stderr に警告する（終了コードには影響しない）
+	for _, sk := range scanResult.Skipped {
+		reportSkipped(cmd, sk.Path, sk.Err)
+	}
+	for _, sk := range skippedCounts {
+		reportSkipped(cmd, sk.Path, sk.Err)
 	}
 
 	// ルール評価
@@ -134,6 +133,16 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// reportSkipped はスキップしたファイルの警告を stderr に出力する。
+func reportSkipped(cmd *cobra.Command, path string, err error) {
+	reason := err
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		reason = pathErr.Err
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "warning: skipped %s: %v\n", path, reason)
 }
 
 // buildOverrides は cmd のフラグから Overrides を構築する。

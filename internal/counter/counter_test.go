@@ -94,8 +94,8 @@ func TestCountFiles_Parallel(t *testing.T) {
 		"testdata/sample.sh",
 	}
 
-	results, err := CountFiles(files, config.CountModeAll)
-	require.NoError(t, err)
+	results, skipped := CountFiles(files, config.CountModeAll)
+	assert.Empty(t, skipped)
 	assert.Len(t, results, 3)
 
 	// 順序が維持されることを確認
@@ -104,14 +104,40 @@ func TestCountFiles_Parallel(t *testing.T) {
 	assert.Equal(t, "testdata/sample.sh", results[2].Path)
 }
 
-func TestCountFiles_WithError(t *testing.T) {
+func TestCountFiles_SkipsUnreadableFiles(t *testing.T) {
+	// 読み取れないファイルがあっても他のファイルは集計され、スキップ情報が返る
 	files := []string{
 		"testdata/sample.go",
 		"testdata/nonexistent.go",
+		"testdata/sample.sh",
 	}
 
-	_, err := CountFiles(files, config.CountModeAll)
-	assert.Error(t, err)
+	results, skipped := CountFiles(files, config.CountModeAll)
+	require.Len(t, results, 2)
+	assert.Equal(t, "testdata/sample.go", results[0].Path)
+	assert.Equal(t, "testdata/sample.sh", results[1].Path)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, "testdata/nonexistent.go", skipped[0].Path)
+	assert.ErrorIs(t, skipped[0].Err, os.ErrNotExist)
+}
+
+func TestCountFiles_SkipsPermissionDenied(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root は権限チェックを回避するためスキップ")
+	}
+	tmpDir := t.TempDir()
+	ok := filepath.Join(tmpDir, "ok.txt")
+	denied := filepath.Join(tmpDir, "denied.txt")
+	require.NoError(t, os.WriteFile(ok, []byte("a\nb\n"), 0644))
+	require.NoError(t, os.WriteFile(denied, []byte("a\n"), 0000))
+
+	results, skipped := CountFiles([]string{denied, ok}, config.CountModeAll)
+	require.Len(t, results, 1)
+	assert.Equal(t, ok, results[0].Path)
+	assert.Equal(t, 2, results[0].TotalLines)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, denied, skipped[0].Path)
+	assert.ErrorIs(t, skipped[0].Err, os.ErrPermission)
 }
 
 func TestCountFile_NoTrailingNewline(t *testing.T) {
@@ -254,8 +280,8 @@ func TestCountFiles_ConcurrencyIsBounded(t *testing.T) {
 		return &LineCount{Path: path}, nil
 	}
 
-	results, err := countFiles(files, config.CountModeAll, countFn)
-	require.NoError(t, err)
+	results, skipped := countFiles(files, config.CountModeAll, countFn)
+	assert.Empty(t, skipped)
 	require.Len(t, results, len(files))
 	for i, r := range results {
 		assert.Equal(t, files[i], r.Path, "入力順が維持されること")
@@ -265,9 +291,9 @@ func TestCountFiles_ConcurrencyIsBounded(t *testing.T) {
 }
 
 func TestCountFiles_Empty(t *testing.T) {
-	results, err := CountFiles(nil, config.CountModeAll)
-	require.NoError(t, err)
+	results, skipped := CountFiles(nil, config.CountModeAll)
 	assert.Empty(t, results)
+	assert.Empty(t, skipped)
 }
 
 func TestCountCodeOnly_BlockCommentWithCodeOnSameLine(t *testing.T) {

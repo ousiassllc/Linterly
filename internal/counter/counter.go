@@ -62,17 +62,24 @@ func CountFile(path string, mode string) (*LineCount, error) {
 // ファイルごとに goroutine を起動すると fd 上限（ulimit -n）を超えるため、CPU 数に比例した固定数に抑える。
 var maxWorkers = runtime.NumCPU()
 
+// SkippedFile は読み取れずにスキップされたファイル。
+type SkippedFile struct {
+	Path string
+	Err  error
+}
+
 // CountFiles は複数ファイルの行数を並行してカウントする。
 // 同時に処理するファイル数は maxWorkers 以下に制限される。
-// 返されるスライスは入力の files スライスと同じインデックス順序を保証する。
-// つまり results[i] は files[i] のカウント結果に対応する。
-func CountFiles(files []string, mode string) ([]LineCount, error) {
+// 読み取れないファイル（走査後に削除された・権限がない等）は全体を失敗させず、skipped として返す。
+// results にはカウントできたファイルのみが入り、入力 files の順序が維持される
+// （results[i].Path は入力の files に含まれるパスと一致する）。
+func CountFiles(files []string, mode string) (results []LineCount, skipped []SkippedFile) {
 	return countFiles(files, mode, CountFile)
 }
 
 // countFiles は countFn をワーカープールで並行実行する。CountFiles の実体（テストで countFn を差し替える）。
-func countFiles(files []string, mode string, countFn func(string, string) (*LineCount, error)) ([]LineCount, error) {
-	results := make([]LineCount, len(files))
+func countFiles(files []string, mode string, countFn func(string, string) (*LineCount, error)) (results []LineCount, skipped []SkippedFile) {
+	counted := make([]*LineCount, len(files))
 	errs := make([]error, len(files))
 
 	workers := min(maxWorkers, len(files))
@@ -83,12 +90,7 @@ func countFiles(files []string, mode string, countFn func(string, string) (*Line
 		go func() {
 			defer wg.Done()
 			for i := range indexes {
-				lc, err := countFn(files[i], mode)
-				if err != nil {
-					errs[i] = err
-					continue
-				}
-				results[i] = *lc
+				counted[i], errs[i] = countFn(files[i], mode)
 			}
 		}()
 	}
@@ -98,13 +100,16 @@ func countFiles(files []string, mode string, countFn func(string, string) (*Line
 	close(indexes)
 	wg.Wait()
 
-	// 入力順で最初のエラーを返す
-	for _, err := range errs {
-		if err != nil {
-			return nil, err
+	// 入力順に集約する
+	results = make([]LineCount, 0, len(files))
+	for i, lc := range counted {
+		if errs[i] != nil {
+			skipped = append(skipped, SkippedFile{Path: files[i], Err: errs[i]})
+			continue
 		}
+		results = append(results, *lc)
 	}
-	return results, nil
+	return results, skipped
 }
 
 // countAll はファイルの全行数をカウントする。行の長さには依存しない。
