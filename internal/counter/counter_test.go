@@ -1,11 +1,12 @@
 package counter
 
 import (
-	"bufio"
-	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ousiassllc/linterly/internal/config"
@@ -91,8 +92,8 @@ func TestCountFiles_Parallel(t *testing.T) {
 		"testdata/sample.sh",
 	}
 
-	results, err := CountFiles(files, config.CountModeAll)
-	require.NoError(t, err)
+	results, skipped := CountFiles(files, config.CountModeAll)
+	assert.Empty(t, skipped)
 	assert.Len(t, results, 3)
 
 	// 順序が維持されることを確認
@@ -101,14 +102,40 @@ func TestCountFiles_Parallel(t *testing.T) {
 	assert.Equal(t, "testdata/sample.sh", results[2].Path)
 }
 
-func TestCountFiles_WithError(t *testing.T) {
+func TestCountFiles_SkipsUnreadableFiles(t *testing.T) {
+	// 読み取れないファイルがあっても他のファイルは集計され、スキップ情報が返る
 	files := []string{
 		"testdata/sample.go",
 		"testdata/nonexistent.go",
+		"testdata/sample.sh",
 	}
 
-	_, err := CountFiles(files, config.CountModeAll)
-	assert.Error(t, err)
+	results, skipped := CountFiles(files, config.CountModeAll)
+	require.Len(t, results, 2)
+	assert.Equal(t, "testdata/sample.go", results[0].Path)
+	assert.Equal(t, "testdata/sample.sh", results[1].Path)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, "testdata/nonexistent.go", skipped[0].Path)
+	assert.ErrorIs(t, skipped[0].Err, os.ErrNotExist)
+}
+
+func TestCountFiles_SkipsPermissionDenied(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root は権限チェックを回避するためスキップ")
+	}
+	tmpDir := t.TempDir()
+	ok := filepath.Join(tmpDir, "ok.txt")
+	denied := filepath.Join(tmpDir, "denied.txt")
+	require.NoError(t, os.WriteFile(ok, []byte("a\nb\n"), 0644))
+	require.NoError(t, os.WriteFile(denied, []byte("a\n"), 0000))
+
+	results, skipped := CountFiles([]string{denied, ok}, config.CountModeAll)
+	require.Len(t, results, 1)
+	assert.Equal(t, ok, results[0].Path)
+	assert.Equal(t, 2, results[0].TotalLines)
+	require.Len(t, skipped, 1)
+	assert.Equal(t, denied, skipped[0].Path)
+	assert.ErrorIs(t, skipped[0].Err, os.ErrPermission)
 }
 
 func TestCountFile_NoTrailingNewline(t *testing.T) {
@@ -121,57 +148,26 @@ func TestCountFile_NoTrailingNewline(t *testing.T) {
 	assert.Equal(t, 2, lc.TotalLines)
 }
 
-func TestCountFile_LargeLine_AllMode(t *testing.T) {
-	// bufio.MaxScanTokenSize(64KB) を超えるが maxScanBufSize(1MB) 以内の行は正常にカウントできる
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "large_line.txt")
-
-	// 64KB+1 の行 + 改行 + 通常行 = 2行
-	data := append(bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1), []byte("\nhello\n")...)
-	require.NoError(t, os.WriteFile(path, data, 0644))
-
-	lc, err := CountFile(path, config.CountModeAll)
-	require.NoError(t, err)
-	assert.Equal(t, 2, lc.TotalLines)
-}
-
-func TestCountFile_LargeLine_CodeOnlyMode(t *testing.T) {
-	// bufio.MaxScanTokenSize(64KB) を超えるが maxScanBufSize(1MB) 以内の行は正常にカウントできる
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "large_line.go")
-
-	data := append(bytes.Repeat([]byte("a"), bufio.MaxScanTokenSize+1), []byte("\npackage main\n")...)
-	require.NoError(t, os.WriteFile(path, data, 0644))
-
-	lc, err := CountFile(path, config.CountModeCodeOnly)
-	require.NoError(t, err)
-	assert.Equal(t, 2, lc.TotalLines)
-}
-
-func TestCountFile_ScannerError_AllMode(t *testing.T) {
-	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "huge_line.txt")
-
-	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
-	require.NoError(t, os.WriteFile(path, data, 0644))
-
-	_, err := CountFile(path, config.CountModeAll)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), path)
-}
-
-func TestCountFile_ScannerError_CodeOnlyMode(t *testing.T) {
-	// maxScanBufSize(1MB) を超える改行なしデータでエラーを返し、ファイルパスが含まれることを確認
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "huge_line.go")
-
-	data := bytes.Repeat([]byte("a"), maxScanBufSize+1)
-	require.NoError(t, os.WriteFile(path, data, 0644))
-
-	_, err := CountFile(path, config.CountModeCodeOnly)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), path)
+func TestCountAll_Edges(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty", "", 0},
+		{"only newline", "\n", 1},
+		{"no trailing newline", "a\nb", 2},
+		{"trailing newline", "a\nb\n", 2},
+		{"blank lines", "\n\n\n", 3},
+		{"crlf", "a\r\nb\r\n", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := countAll(strings.NewReader(tt.input))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestCountAll_FromReader(t *testing.T) {
@@ -188,4 +184,41 @@ func TestCountCodeOnly_FromReader(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 4, total)
 	assert.Equal(t, 2, code)
+}
+
+func TestCountFiles_ConcurrencyIsBounded(t *testing.T) {
+	// 同時に処理されるファイル数が maxWorkers を超えないこと（fd 枯渇の回帰テスト）
+	files := make([]string, 200)
+	for i := range files {
+		files[i] = fmt.Sprintf("f%d.txt", i)
+	}
+
+	var current, peak atomic.Int32
+	countFn := func(path, _ string) (*LineCount, error) {
+		n := current.Add(1)
+		defer current.Add(-1)
+		for {
+			p := peak.Load()
+			if n <= p || peak.CompareAndSwap(p, n) {
+				break
+			}
+		}
+		runtime.Gosched()
+		return &LineCount{Path: path}, nil
+	}
+
+	results, skipped := countFiles(files, config.CountModeAll, countFn)
+	assert.Empty(t, skipped)
+	require.Len(t, results, len(files))
+	for i, r := range results {
+		assert.Equal(t, files[i], r.Path, "入力順が維持されること")
+	}
+	assert.LessOrEqual(t, int(peak.Load()), maxWorkers)
+	assert.Positive(t, int(peak.Load()))
+}
+
+func TestCountFiles_Empty(t *testing.T) {
+	results, skipped := CountFiles(nil, config.CountModeAll)
+	assert.Empty(t, results)
+	assert.Empty(t, skipped)
 }

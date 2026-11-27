@@ -273,3 +273,52 @@ func codeList(ve *ValidationErrors) []string {
 	}
 	return codes
 }
+
+func TestLoadUpdateSettings(t *testing.T) {
+	write := func(t *testing.T, dir, name, body string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
+		return path
+	}
+
+	t.Run("explicit path: update_check false and language", func(t *testing.T) {
+		path := write(t, t.TempDir(), "c.yml", "rules:\n  max_lines_per_file: 300\nupdate_check: false\nlanguage: ja\n")
+		updateCheck, lang := LoadUpdateSettings(path)
+		assert.False(t, updateCheck)
+		assert.Equal(t, "ja", lang)
+	})
+
+	t.Run("unset keys default to enabled", func(t *testing.T) {
+		path := write(t, t.TempDir(), "c.yml", "rules:\n  max_lines_per_file: 300\n")
+		updateCheck, lang := LoadUpdateSettings(path)
+		assert.True(t, updateCheck)
+		assert.Empty(t, lang)
+	})
+
+	t.Run("missing explicit path falls back to defaults", func(t *testing.T) {
+		updateCheck, lang := LoadUpdateSettings("/nonexistent/path/config.yml")
+		assert.True(t, updateCheck)
+		assert.Empty(t, lang)
+	})
+
+	t.Run("LINTERLY_CONFIG is honored like Load", func(t *testing.T) {
+		path := write(t, t.TempDir(), "env.yml", "rules:\n  max_lines_per_file: 300\nupdate_check: false\n")
+		t.Setenv("LINTERLY_CONFIG", path)
+		updateCheck, _ := LoadUpdateSettings("")
+		assert.False(t, updateCheck)
+	})
+
+	t.Run("auto-discovers .linterly.yml in cwd like Load", func(t *testing.T) {
+		dir := t.TempDir()
+		write(t, dir, ".linterly.yml", "rules:\n  max_lines_per_file: 300\nlanguage: ja\n")
+		t.Setenv("LINTERLY_CONFIG", "")
+		origDir, err := os.Getwd()
+		require.NoError(t, err)
+		defer func() { _ = os.Chdir(origDir) }()
+		require.NoError(t, os.Chdir(dir))
+		updateCheck, lang := LoadUpdateSettings("")
+		assert.True(t, updateCheck)
+		assert.Equal(t, "ja", lang)
+	})
+}

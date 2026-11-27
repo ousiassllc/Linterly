@@ -18,6 +18,7 @@ validation.count_mode: '"count_mode" must be "all" or "code_only"'
 validation.language: '"language" must be "en" or "ja"'
 err.config_not_found: "Config file not found. Run 'linterly init' to create one."
 err.config_parse: "Failed to parse config file: %s"
+err.unsupported_format: "Unsupported format: %s (%s)"
 update.available: "A new version of linterly is available: %s → %s"
 update.run: "Run `%s` to update."
 update.visit: "Visit %s to update."

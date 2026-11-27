@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -157,8 +158,9 @@ func TestPrintUpdateNotice_NoUpdate(t *testing.T) {
 }
 
 func TestPrintUpdateNotice_NotCompleted(t *testing.T) {
-	oldResult := updateResult
-	defer func() { updateResult = oldResult }()
+	oldResult, oldWait := updateResult, updateWaitTimeout
+	defer func() { updateResult, updateWaitTimeout = oldResult, oldWait }()
+	updateWaitTimeout = 10 * time.Millisecond
 
 	// 空のバッファ付きチャネル（何も送信されていない）
 	ch := make(chan *updatecheck.CheckResult, 1)

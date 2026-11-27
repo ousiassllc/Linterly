@@ -23,6 +23,7 @@ const (
 	npmUpdateCmd      = "npm update -g @linterly/cli"
 	goInstallCmd      = "go install github.com/ousiassllc/linterly/cmd/linterly@latest"
 	cacheTTL          = 24 * time.Hour
+	failureCacheTTL   = 1 * time.Hour
 	cacheFileName     = "latest-version.json"
 	httpTimeout       = 3 * time.Second
 )
@@ -118,15 +119,6 @@ func (c *Checker) Check(ctx context.Context) (*CheckResult, error) {
 	return &CheckResult{CurrentVersion: current, LatestVersion: latest}, nil
 }
 
-// DetectInstallMethod は実行バイナリのパスからインストール経路を推定する。
-func DetectInstallMethod() InstallMethod {
-	exe, err := os.Executable()
-	if err != nil {
-		return InstallMethodUnknown
-	}
-	return detectInstallMethodFromPath(exe)
-}
-
 func (c *Checker) resolveCurrentVersion() string {
 	if c.currentVersion != "dev" && c.currentVersion != "" {
 		return c.currentVersion
@@ -144,8 +136,16 @@ func (c *Checker) resolveCurrentVersion() string {
 
 func (c *Checker) getLatestVersion(ctx context.Context) (string, error) {
 	if entry, err := c.readCache(); err == nil {
+		if entry.Failed {
+			return "", errCachedFailure
+		}
 		return entry.LatestVersion, nil
 	}
+
+	// 通信できない環境で毎回待たされないよう、通信の前に「失敗した」記録を書いておく。
+	// 通信が失敗した場合だけでなく、応答を待たずにプロセスが終了した場合も、
+	// 成功時に上書きされるまで failureCacheTTL の間は再試行しない。
+	_ = c.writeCache(&cacheEntry{Failed: true, CheckedAt: c.now()})
 
 	latest, err := c.fetchLatest(ctx)
 	if err != nil {
@@ -184,45 +184,6 @@ func normalizeVersion(v string) string {
 		return "v" + v
 	}
 	return v
-}
-
-// --- キャッシュ管理 ---
-
-type cacheEntry struct {
-	LatestVersion string    `json:"latest_version"`
-	CheckedAt     time.Time `json:"checked_at"`
-}
-
-func (c *Checker) readCache() (*cacheEntry, error) {
-	if c.cacheDir == "" {
-		return nil, fmt.Errorf("cache dir not set")
-	}
-	data, err := os.ReadFile(filepath.Join(c.cacheDir, cacheFileName))
-	if err != nil {
-		return nil, err
-	}
-	var entry cacheEntry
-	if err := json.Unmarshal(data, &entry); err != nil {
-		return nil, err
-	}
-	if c.now().Sub(entry.CheckedAt) > cacheTTL {
-		return nil, fmt.Errorf("cache expired")
-	}
-	return &entry, nil
-}
-
-func (c *Checker) writeCache(entry *cacheEntry) error {
-	if c.cacheDir == "" {
-		return nil
-	}
-	if err := os.MkdirAll(c.cacheDir, 0o755); err != nil {
-		return err
-	}
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(c.cacheDir, cacheFileName), data, 0o644)
 }
 
 // --- GitHub API ---

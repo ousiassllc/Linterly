@@ -13,7 +13,9 @@
 - **多言語コメント認識** — Go, Rust, JavaScript/TypeScript, Python, Ruby, Java, C/C++ など
 - **柔軟な除外設定** — `.linterlyignore`（gitignore形式）と設定ファイルによる除外
 - **豊富なデフォルト除外** — `node_modules/`, `vendor/`, `.git/`, `dist/` など自動除外
+- **多様な出力形式** — テキスト・JSON・JUnit XML・checkstyle XML（`--format`）
 - **日本語対応** — CLI出力の日英切り替え
+- **更新チェック** — 新しいバージョンを通知（無効化も可能）
 
 ## インストール
 
@@ -39,8 +41,15 @@ linterly check
 # 特定のパスをチェック
 linterly check src/
 
+# 特定のファイルをチェック（複数指定可。Git フックのステージ済みファイルなど）
+linterly check src/handler.go src/service.go
+
 # JSON形式で出力
 linterly check --format json
+
+# JUnit XML / checkstyle XML形式で出力
+linterly check --format junit
+linterly check --format checkstyle
 
 # CLIフラグで設定値を上書き
 linterly check --max-lines-per-file 500 --count-mode code_only
@@ -71,7 +80,7 @@ linterly version
   ERROR src/service.go (450 lines, limit: 300)
   ERROR src/ (2500 lines, limit: 2000)
 
-Results: 2 error(s), 1 warning, 42 passed
+Results: 2 error(s), 1 warning(s), 42 passed
 ```
 
 ### 終了コード
@@ -101,6 +110,7 @@ ignore:
   - "**/*_generated.go"
 
 default_excludes: true           # デフォルト除外の有効/無効
+update_check: true               # 更新チェックの有効/無効
 ```
 
 ### 違反判定ロジック
@@ -118,7 +128,15 @@ default_excludes: true           # デフォルト除外の有効/無効
 
 `.linterlyignore` を gitignore と同じ形式で記述できます。`.linterlyignore` の設定は設定ファイルの `ignore` より優先されます。
 
-パターンは常にプロジェクトルート（`.linterly.yml` または `.linterlyignore` の配置場所）を基準に評価されます。`linterly check src/` のようにサブディレクトリを指定した場合も、`linterly check .` と同じようにパターンが評価されます。
+パターンは、チェック対象のパスや設定ファイルの場所に関わらず、常にカレントディレクトリ（プロジェクトルート）を基準に評価されます。`.linterlyignore` も常にカレントディレクトリから読み込まれます。`linterly check src/` のようにサブディレクトリを指定した場合も、`linterly check .` と同じようにパターンが評価されます。
+
+### 更新チェック
+
+Linterly は新しいリリースがないかをバックグラウンドで確認し、コマンド終了後に stderr へ通知を表示します。結果は 24 時間キャッシュされ、コマンドは更新チェックの完了を最大 1 秒だけ待ちます。次のいずれかで無効化できます。
+
+- `--no-update-check` フラグ
+- 環境変数 `LINTERLY_NO_UPDATE_CHECK`（空でない値）
+- 設定ファイルの `update_check: false`
 
 ## Git Hooks との連携
 
@@ -133,6 +151,8 @@ pre-commit:
       run: linterly check {staged_files}
 ```
 
+`check` はファイルパスを受け付けるため、ステージ済みファイルがそのまま渡されます。ディレクトリ行数の上限は、渡したファイルのみを対象に評価されます。
+
 ### Husky + lint-staged
 
 ```json
@@ -143,6 +163,8 @@ pre-commit:
   }
 }
 ```
+
+lint-staged はステージ済みファイル名をコマンドの末尾に付与します。ディレクトリ行数の上限は、それらのファイルのみを対象に評価されます。
 
 ## CI での利用
 
@@ -164,7 +186,7 @@ pre-commit:
 | [非機能要件](./docs/requirements/non-functional.md) | パフォーマンス・プラットフォーム・配布 |
 | [アーキテクチャ](./docs/architecture/overview.md) | レイヤー構成・技術選定・パッケージ設計 |
 | [設定スキーマ](./docs/architecture/config-schema.md) | YAML仕様・バリデーション・ignore形式 |
-| [コンポーネント設計](./docs/components/overview.md) | 7コンポーネントの責務・インターフェース |
+| [コンポーネント設計](./docs/components/overview.md) | 8コンポーネントの責務・インターフェース |
 | [CLI仕様](./docs/api/cli.md) | コマンド・フラグ・出力・終了コード |
 
 ## License

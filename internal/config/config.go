@@ -203,6 +203,18 @@ func Load(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
+// LoadUpdateSettings は設定ファイルから update_check と language だけを読み取る。
+// Load と同じ探索規則（findAndReadConfig）を使うが、バリデーションは行わず、
+// 設定ファイルが無い・読めない場合は既定値（update_check=true, language=""）を返す。
+func LoadUpdateSettings(configPath string) (updateCheck bool, language string) {
+	v := viper.New()
+	if _, err := findAndReadConfig(v, configPath); err != nil {
+		return true, ""
+	}
+	updateCheck = !v.IsSet("update_check") || v.GetBool("update_check")
+	return updateCheck, v.GetString("language")
+}
+
 // wrapViperError は viper の ReadInConfig エラーを ConfigError にラップする。
 func wrapViperError(err error) *ConfigError {
 	var notFoundErr viper.ConfigFileNotFoundError

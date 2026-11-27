@@ -30,8 +30,15 @@ npx linterly check
 # Check a specific path
 npx linterly check src/
 
+# Check specific files (multiple paths allowed; e.g. staged files from Git hooks)
+npx linterly check src/handler.go src/service.go
+
 # Output in JSON format
 npx linterly check --format json
+
+# Output in JUnit XML / checkstyle XML format
+npx linterly check --format junit
+npx linterly check --format checkstyle
 
 # Override config values with CLI flags
 npx linterly check --max-lines-per-file 500 --count-mode code_only
@@ -66,11 +73,14 @@ ignore:
   - "*.pb.go"
 
 default_excludes: true
+update_check: true    # set to false to disable the update check
 ```
 
 CLI flags always take precedence over config file values (`CLI flags > config file > defaults`).
 
-You can also create a `.linterlyignore` file (gitignore format) for exclusion patterns.
+You can also create a `.linterlyignore` file (gitignore format) for exclusion patterns. Patterns are evaluated relative to the current directory (the project root).
+
+Linterly checks for a newer release in the background and prints a notice to stderr. Disable it with `--no-update-check`, the `LINTERLY_NO_UPDATE_CHECK` environment variable, or `update_check: false` in the config file.
 
 ## Git Hooks Integration
 
@@ -84,6 +94,8 @@ You can also create a `.linterlyignore` file (gitignore format) for exclusion pa
 }
 ```
 
+lint-staged appends the staged file names to the command. Directory line limits are evaluated only against those files.
+
 ### Lefthook
 
 ```yaml
@@ -93,6 +105,8 @@ pre-commit:
       glob: "*.go"
       run: linterly check {staged_files}
 ```
+
+`check` accepts file paths, so the staged files are passed as-is. Directory line limits are evaluated only against the files you pass.
 
 ## Supported Platforms
 
