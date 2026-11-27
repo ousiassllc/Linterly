@@ -127,8 +127,10 @@ func TestCheck_WritesCacheAfterSlowAPI(t *testing.T) {
 		done <- result
 	}()
 
-	_, err := c.readCache()
-	require.Error(t, err, "cache must not exist before the API responds")
+	// 応答前に存在してよいのは、通信開始時に書く失敗記録のみ（成功結果のキャッシュはない）
+	if entry, err := c.readCache(); err == nil {
+		require.True(t, entry.Failed, "success cache must not exist before the API responds")
+	}
 
 	close(release)
 	result := <-done
